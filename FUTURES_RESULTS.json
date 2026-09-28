@@ -1,6 +1,6 @@
 {
   "status": "PARTIAL",
-  "revision": "c631d5e9cb1b0d52369d10a4efb5f1ae9056a460",
+  "revision": "e15e0dc390792784295ce0de8fc89c766119f1fa",
   "python": "3.11.9",
   "platform": "Windows-10-10.0.26200-SP0",
   "cuda": {
@@ -16,6 +16,8 @@
     "cuda_available": false,
     "device": null,
     "custom_warp_kernels_tested": [],
+    "kernel_parity_count": 0,
+    "kernel_parity_pass_count": 0,
     "gpu_test_count": 0,
     "gpu_pass_count": 0,
     "cpu_gpu_parity": "NOT_RUN",
@@ -33,7 +35,7 @@
   "futures": 10000,
   "delta_bytes": 240000,
   "logical_delta_bytes": 240000,
-  "evaluation_seconds": 1.577139899993199,
+  "evaluation_seconds": 0.6591709999920567,
   "selected_without_collision": 10000,
   "shared_snapshot": true,
   "predicates": [
@@ -55,32 +57,32 @@
   "scaling": [
     {
       "futures": 100,
-      "creation_seconds": 0.002129700005752966,
-      "distance_seconds": 0.00023180000425782055,
+      "creation_seconds": 0.0018807000014930964,
+      "distance_seconds": 0.00013670000771526247,
       "delta_bytes": 2400
     },
     {
       "futures": 1000,
-      "creation_seconds": 0.002510899998014793,
-      "distance_seconds": 0.0007538999925600365,
+      "creation_seconds": 0.0012117000005673617,
+      "distance_seconds": 0.00022480000916402787,
       "delta_bytes": 24000
     },
     {
       "futures": 10000,
-      "creation_seconds": 0.004211099992971867,
-      "distance_seconds": 0.0030633999995188788,
+      "creation_seconds": 0.0019033999997191131,
+      "distance_seconds": 0.0020733999990625307,
       "delta_bytes": 240000
     },
     {
       "futures": 50000,
-      "creation_seconds": 0.005073899999842979,
-      "distance_seconds": 0.020975599996745586,
+      "creation_seconds": 0.002214100008131936,
+      "distance_seconds": 0.010108400005265139,
       "delta_bytes": 1200000
     },
     {
       "futures": 100000,
-      "creation_seconds": 0.016954899998381734,
-      "distance_seconds": 0.04708369998843409,
+      "creation_seconds": 0.005615399990347214,
+      "distance_seconds": 0.030813899997156113,
       "delta_bytes": 2400000
     }
   ],

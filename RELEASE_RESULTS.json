@@ -1,0 +1,173 @@
+{
+  "release_status": "PARTIAL",
+  "commit": "e15e0dc390792784295ce0de8fc89c766119f1fa",
+  "tests": {
+    "returncode": 0,
+    "output": "...............................sssss.................................... [ 87%]\n..........                                                               [100%]\n=========================== short test summary info ===========================\nSKIPPED [5] tests\\test_gpu.py:22: CUDA validation unavailable: CUDA driver/device is unavailable.\n77 passed, 5 skipped in 2.84s\n\n",
+    "passed": 77,
+    "failed": 0,
+    "skipped": 5
+  },
+  "supported_capabilities": [
+    "GLB/glTF/OBJ loading",
+    "deterministic AABB predicates and Reality Graph",
+    "visibility evidence",
+    "snapshots, branches, consequences, and compact Futures",
+    "exact World.explore optimization",
+    "navigation, articulation, metadata, and optional MuJoCo physics",
+    "optional Warp collision, distance, and AABB visibility kernels"
+  ],
+  "gpu_validation": {
+    "cuda_available": false,
+    "device": null,
+    "custom_warp_kernels_tested": [],
+    "kernel_parity_count": 0,
+    "kernel_parity_pass_count": 0,
+    "gpu_test_count": 0,
+    "gpu_pass_count": 0,
+    "cpu_gpu_parity": "NOT_RUN",
+    "gpu_execution_used": false,
+    "failures": [],
+    "pytest": {
+      "status": "NOT_RUN",
+      "count": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "optimization_benchmark": [
+    {
+      "possibilities": 100,
+      "backend": "cpu",
+      "generation_seconds": 0.0031149999995250255,
+      "upload_seconds": null,
+      "kernel_seconds": 0.0004102000093553215,
+      "filtering_ranking_seconds": 0.000526399991940707,
+      "download_seconds": 0.0008167000050889328,
+      "end_to_end_seconds": 0.004868300005909987,
+      "delta_bytes": 2400,
+      "peak_traced_bytes": 40222,
+      "valid_candidates": 58,
+      "selected": 10
+    },
+    {
+      "possibilities": 1000,
+      "backend": "cpu",
+      "generation_seconds": 0.00033880000410135835,
+      "upload_seconds": null,
+      "kernel_seconds": 0.0002998999989358708,
+      "filtering_ranking_seconds": 0.00024850000045262277,
+      "download_seconds": 0.0007944000099087134,
+      "end_to_end_seconds": 0.0016816000133985654,
+      "delta_bytes": 24000,
+      "peak_traced_bytes": 356672,
+      "valid_candidates": 601,
+      "selected": 10
+    },
+    {
+      "possibilities": 10000,
+      "backend": "cpu",
+      "generation_seconds": 0.0004267000040272251,
+      "upload_seconds": null,
+      "kernel_seconds": 0.0013359000004129484,
+      "filtering_ranking_seconds": 0.0008468000014545396,
+      "download_seconds": 0.0012418000114848837,
+      "end_to_end_seconds": 0.003851200017379597,
+      "delta_bytes": 240000,
+      "peak_traced_bytes": 2948664,
+      "valid_candidates": 6000,
+      "selected": 10
+    },
+    {
+      "possibilities": 100000,
+      "backend": "cpu",
+      "generation_seconds": 0.00308539999241475,
+      "upload_seconds": null,
+      "kernel_seconds": 0.01083949999883771,
+      "filtering_ranking_seconds": 0.006710999994538724,
+      "download_seconds": 0.013169900004868396,
+      "end_to_end_seconds": 0.03380579999065958,
+      "delta_bytes": 2400000,
+      "peak_traced_bytes": 28868656,
+      "valid_candidates": 59786,
+      "selected": 10
+    },
+    {
+      "possibilities": 1000000,
+      "backend": "cpu",
+      "generation_seconds": 0.02944089999073185,
+      "upload_seconds": null,
+      "kernel_seconds": 0.1441192000056617,
+      "filtering_ranking_seconds": 0.07621430000290275,
+      "download_seconds": 0.14703270001336932,
+      "end_to_end_seconds": 0.3968071000126656,
+      "delta_bytes": 24000000,
+      "peak_traced_bytes": 288068648,
+      "valid_candidates": 600387,
+      "selected": 10
+    }
+  ],
+  "demos": {
+    "room_layout_optimization.py": {
+      "returncode": 0,
+      "output": "{\n  \"backend\": \"cpu\",\n  \"candidates\": [\n    {\n      \"constraints_satisfied\": true,\n      \"deltas\": {\n        \"object-1\": {\n          \"position\": [\n            -1.9745609760879197,\n            -1.9919055895603588,\n            0.0\n          ],\n          \"rotation\": [\n            0.0,\n            0.0,\n            0.0\n          ],\n          \"scale\": [\n            1.0,\n            1.0,\n            1.0\n          ]\n        }\n      },\n      \"future_id\": \"future-513\",\n      \"future_index\": 512,\n      \"predicates\": {\n        \"collision:Table:Column\": false,\n        \"distance:Table:Sofa\": 4.096463310130098\n      },\n      \"score\": 4.096463310130098\n    },\n    {\n      \"constraints_satisfied\": true,\n      \"deltas\": {\n        \"object-1\": {\n          \"position\": [\n            -1.9969023669644388,\n            -1.8477202184411854,\n            0.0\n          ],\n          \"rotation\": [\n            0.0,\n            0.0,\n            0.0\n          ],\n          \"scale\": [\n            1.0,\n            1.0,\n            1.0\n          ]\n        }\n      },\n      \"future_id\": \"future-4090\",\n      \"future_index\": 4089,\n      \"predicates\": {\n        \"collision:Table:Column\": false,\n        \"distance:Table:Sofa\": 4.085811804256274\n      },\n      \"score\": 4.085811804256274\n    },\n    {\n      \"constraints_satisfied\": true,\n      \"deltas\": {\n        \"object-1\": {\n          \"position\": [\n            -1.983463949661398,\n            1.9006434449984861,\n            0.0\n          ],\n          \"rotation\": [\n            0.0,\n            0.0,\n            0.0\n          ],\n          \"scale\": [\n            1.0,\n            1.0,\n            1.0\n          ]\n        }\n      },\n      \"future_id\": \"future-2717\",\n      \"future_index\": 2716,\n      \"predicates\": {\n        \"collision:Table:Column\": false,\n        \"distance:Table:Sofa\": 4.08401073128741\n      },\n      \"score\": 4.08401073128741\n    },\n    {\n      \"constraints_satisfied\": true,\n      \"deltas\": {\n        \"object-1\": {\n          \"position\": [\n            -1.9868350064119218,\n            1.883766025828041,\n            0.0\n          ],\n          \"rotation\": [\n            0.0,\n            0.0,\n            0.0\n          ],\n          \"scale\": [\n            1.0,\n            1.0,\n            1.0\n          ]\n        }\n      },\n      \"future_id\": \"future-9584\",\n      \"future_index\": 9583,\n      \"predicates\": {\n        \"collision:Table:Column\": false,\n        \"distance:Table:Sofa\": 4.083613076279319\n      },\n      \"score\": 4.083613076279319\n    },\n    {\n      \"constraints_satisfied\": true,\n      \"deltas\": {\n        \"object-1\": {\n          \"position\": [\n            -1.9686530462343015,\n            1.9496044841625282,\n            0.0\n          ],\n          \"rotation\": [\n            0.0,\n            0.0,\n            0.0\n          ],\n          \"scale\": [\n            1.0,\n            1.0,\n            1.0\n          ]\n        }\n      },\n      \"future_id\": \"future-1985\",\n      \"future_index\": 1984,\n      \"predicates\": {\n        \"collision:Table:Column\": false,\n        \"distance:Table:Sofa\": 4.0806807860608725\n      },\n      \"score\": 4.0806807860608725\n    }\n  ],\n  \"changes\": [\n    {\n      \"object\": \"Table\",\n      \"x\": [\n        -2.0,\n        2.0\n      ],\n      \"y\": [\n        -2.0,\n        2.0\n      ],\n      \"z\": [\n        0.0,\n        0.0\n      ]\n    }\n  ],\n  \"constraints\": [\n    \"collision:Table:Column\"\n  ],\n  \"elapsed_seconds\": 0.0028752999933203682,\n  \"evaluation\": {\n    \"backend\": \"cpu\",\n    \"branch_count\": 10000,\n    \"delta_bytes\": 240000,\n    \"elapsed_seconds\": 0.0015650999994250014,\n    \"predicate_keys\": [\n      \"collision:Table:Column\",\n      \"distance:Table:Sofa\"\n    ]\n  },\n  \"objectives\": [\n    {\n      \"predicate\": \"distance:Table:Sofa\",\n      \"weight\": 1.0\n    }\n  ],\n  \"possibilities\": 10000,\n  \"ranking\": {\n    \"constraints\": [\n      \"collision:Table:Column\"\n    ],\n    \"selected_count\": 5,\n    \"valid_count\": 7561\n  },\n  \"seed\": 42,\n  \"valid_count\": 7561\n}\n\n",
+      "trailing_output": "",
+      "machine_readable": true
+    },
+    "game_level_clearance.py": {
+      "returncode": 0,
+      "output": "{\n  \"path\": {\n    \"reachable\": true,\n    \"points\": [\n      [\n        0.0,\n        0.0,\n        0.0\n      ],\n      [\n        0.25,\n        0.0,\n        0.0\n      ],\n      [\n        0.5,\n        0.0,\n        0.0\n      ],\n      [\n        0.75,\n        -0.25,\n        0.0\n      ],\n      [\n        1.0,\n        -0.5,\n        0.0\n      ],\n      [\n        1.25,\n        -0.75,\n        0.0\n      ],\n      [\n        1.5,\n        -1.0,\n        0.0\n      ],\n      [\n        1.75,\n        -1.0,\n        0.0\n      ],\n      [\n        2.0,\n        -1.0,\n        0.0\n      ],\n      [\n        2.25,\n        -1.0,\n        0.0\n      ],\n      [\n        2.5,\n        -1.0,\n        0.0\n      ],\n      [\n        2.75,\n        -1.0,\n        0.0\n      ],\n      [\n        3.0,\n        -1.0,\n        0.0\n      ],\n      [\n        3.25,\n        -1.0,\n        0.0\n      ],\n      [\n        3.5,\n        -1.0,\n        0.0\n      ],\n      [\n        3.75,\n        -0.75,\n        0.0\n      ],\n      [\n        4.0,\n        -0.5,\n        0.0\n      ],\n      [\n        4.25,\n        -0.5,\n        0.0\n      ],\n      [\n        4.5,\n        -0.25,\n        0.0\n      ],\n      [\n        4.75,\n        -0.25,\n        0.0\n      ],\n      [\n        5.0,\n        -0.25,\n        0.0\n      ],\n      [\n        5.25,\n        0.0,\n        0.0\n      ]\n    ],\n    \"distance\": 6.078427124746191,\n    \"minimum_clearance\": 0.19999999999999996,\n    \"narrowest_point\": [\n      1.75,\n      -1.0,\n      0.0\n    ],\n    \"blocked_by\": [\n      {\n        \"id\": \"object-2\",\n        \"name\": \"Pillar\"\n      }\n    ],\n    \"reason\": \"A collision-free path was found using deterministic A*.\",\n    \"evidence\": {\n      \"algorithm\": \"A* (8-connected occupancy grid)\",\n      \"coordinate_system\": \"XY ground plane, Z up\",\n      \"resolution\": 0.25,\n      \"grid_size\": [\n        38,\n        17\n      ],\n      \"visited_cells\": 128,\n      \"required_clearance\": 0.6,\n      \"target_id\": \"object-1\",\n      \"max_slope\": null\n    }\n  },\n  \"reachability\": {\n    \"reachable\": true,\n    \"required_clearance\": 0.6,\n    \"available_clearance\": 0.9999999999999999,\n    \"reason\": \"A collision-free path was found using deterministic A*.\"\n  }\n}\n\n",
+      "trailing_output": "",
+      "machine_readable": true
+    },
+    "mechanism_feasibility.py": {
+      "returncode": 0,
+      "output": "{\n  \"possible\": true,\n  \"requested\": 90.0,\n  \"maximum_collision_free\": 90.0,\n  \"collision_at\": null,\n  \"collides_with\": [],\n  \"units\": \"deg\",\n  \"reason\": \"The complete sampled motion path is collision-free.\",\n  \"samples_tested\": 90,\n  \"evidence\": {\n    \"method\": \"sampled swept world-AABB\",\n    \"resolution\": 1.0,\n    \"joint_limits\": [\n      0.0,\n      90.0\n    ]\n  }\n}\n\n",
+      "trailing_output": "",
+      "machine_readable": true
+    },
+    "robot_planning.py": {
+      "returncode": 0,
+      "output": "{\n  \"path\": {\n    \"reachable\": true,\n    \"points\": [\n      [\n        0.0,\n        0.0,\n        0.0\n      ],\n      [\n        0.25,\n        0.0,\n        0.0\n      ],\n      [\n        0.5,\n        0.0,\n        0.0\n      ],\n      [\n        0.75,\n        0.0,\n        0.0\n      ],\n      [\n        1.0,\n        -0.25,\n        0.0\n      ],\n      [\n        1.25,\n        -0.5,\n        0.0\n      ],\n      [\n        1.5,\n        -0.75,\n        0.0\n      ],\n      [\n        1.75,\n        -0.75,\n        0.0\n      ],\n      [\n        2.0,\n        -0.75,\n        0.0\n      ],\n      [\n        2.25,\n        -0.75,\n        0.0\n      ],\n      [\n        2.5,\n        -0.75,\n        0.0\n      ],\n      [\n        2.75,\n        -0.75,\n        0.0\n      ],\n      [\n        3.0,\n        -0.75,\n        0.0\n      ],\n      [\n        3.25,\n        -0.5,\n        0.0\n      ],\n      [\n        3.5,\n        -0.25,\n        0.0\n      ],\n      [\n        3.75,\n        -0.25,\n        0.0\n      ],\n      [\n        4.0,\n        -0.25,\n        0.0\n      ],\n      [\n        4.25,\n        0.0,\n        0.0\n      ]\n    ],\n    \"distance\": 4.871320343559643,\n    \"minimum_clearance\": 0.09999999999999998,\n    \"narrowest_point\": [\n      1.75,\n      -0.75,\n      0.0\n    ],\n    \"blocked_by\": [\n      {\n        \"id\": \"object-2\",\n        \"name\": \"Crate\"\n      }\n    ],\n    \"reason\": \"A collision-free path was found using deterministic A*.\",\n    \"evidence\": {\n      \"algorithm\": \"A* (8-connected occupancy grid)\",\n      \"coordinate_system\": \"XY ground plane, Z up\",\n      \"resolution\": 0.25,\n      \"grid_size\": [\n        35,\n        17\n      ],\n      \"visited_cells\": 87,\n      \"required_clearance\": 0.5,\n      \"target_id\": \"object-1\",\n      \"max_slope\": null\n    }\n  },\n  \"clearance\": {\n    \"reachable\": true,\n    \"minimum_clearance\": 0.09999999999999998,\n    \"narrowest_point\": [\n      1.75,\n      -0.75,\n      0.0\n    ],\n    \"reason\": \"A collision-free path was found using deterministic A*.\"\n  }\n}\n\n",
+      "trailing_output": "",
+      "machine_readable": true
+    }
+  },
+  "installation": {
+    "build": {
+      "returncode": 0,
+      "output": "Successfully built reality-0.1.0.tar.gz and reality-0.1.0-py3-none-any.whl\n\n* Creating isolated environment: venv+pip...\n* Installing packages in isolated environment:\n  - hatchling>=1.25\n* Getting build dependencies for sdist...\n* Building sdist...\n* Building wheel from sdist\n* Creating isolated environment: venv+pip...\n* Installing packages in isolated environment:\n  - hatchling>=1.25\n* Getting build dependencies for wheel...\n* Building wheel...\n"
+    },
+    "venv": {
+      "returncode": 0,
+      "output": "\n"
+    },
+    "wheel": "C:\\Users\\LENOVO\\Documents\\Codex\\2026-09-26\\https-perfuma-framer-website-https-perfuma\\dist\\reality-0.1.0-py3-none-any.whl",
+    "install": {
+      "returncode": 0,
+      "output": "Processing c:\\users\\lenovo\\documents\\codex\\2026-09-26\\https-perfuma-framer-website-https-perfuma\\dist\\reality-0.1.0-py3-none-any.whl\nCollecting numpy>=1.26 (from reality==0.1.0)\n  Using cached numpy-2.4.6-cp311-cp311-win_amd64.whl.metadata (6.6 kB)\nCollecting trimesh>=4.0 (from reality==0.1.0)\n  Using cached trimesh-5.1.0-py3-none-any.whl.metadata (13 kB)\nUsing cached numpy-2.4.6-cp311-cp311-win_amd64.whl (12.6 MB)\nUsing cached trimesh-5.1.0-py3-none-any.whl (750 kB)\nInstalling collected packages: numpy, trimesh, reality\nSuccessfully installed numpy-2.4.6 reality-0.1.0 trimesh-5.1.0\n\n\n[notice] A new release of pip is available: 24.0 -> 26.2.1\n[notice] To update, run: C:\\Users\\LENOVO\\AppData\\Local\\Temp\\reality-release-ouuok92e\\venv\\Scripts\\python.exe -m pip install --upgrade pip\n"
+    },
+    "import": {
+      "returncode": 0,
+      "output": "reality\n\n"
+    }
+  },
+  "pypi_name_check": {
+    "returncode": 1,
+    "output": "\nERROR: No matching distribution found for reality\n\n[notice] A new release of pip is available: 26.1.2 -> 26.2.1\n[notice] To update, run: python.exe -m pip install --upgrade pip\n"
+  },
+  "known_limitations": [
+    "All spatial predicates and batched visibility use AABBs, not exact triangle meshes.",
+    "Batched rotation and scale storage exists but exact batched predicate evaluation is pending.",
+    "The experimental predictor only prioritizes; every selected candidate requires exact validation."
+  ],
+  "reproduction": [
+    "python -m pip install -e '.[dev,physics,gpu]'",
+    "python -m ruff format --check . && python -m ruff check .",
+    "python -m mypy src && python -m pytest -q",
+    "python benchmarks/explore_scaling.py",
+    "python tools/futures_audit.py --full --output FUTURES_AUDIT.md",
+    "python tools/release_audit.py --output RELEASE_AUDIT.md"
+  ]
+}

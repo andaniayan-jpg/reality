@@ -1,0 +1,137 @@
+{
+  "hardware": {
+    "warp_version": "1.17.0",
+    "devices": [
+      "cpu"
+    ],
+    "cuda_available": false,
+    "warp_reason": "CUDA driver/device is unavailable.",
+    "nvidia_smi": {
+      "returncode": 127,
+      "stdout": "",
+      "stderr": "[WinError 2] The system cannot find the file specified"
+    },
+    "os": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]"
+  },
+  "cuda_proof": {
+    "status": "FAIL",
+    "device": [
+      "cpu"
+    ],
+    "cuda_device_count": 0,
+    "kernels_launched": 0,
+    "reason": "CUDA driver/device is unavailable."
+  },
+  "correctness": {
+    "status": "UNAVAILABLE",
+    "reason": "No CUDA device; GPU kernels were not launched.",
+    "operations": {}
+  },
+  "scaling": [
+    {
+      "branches": 1,
+      "branch_setup_seconds": 1.8000009731622413e-06,
+      "cpu_raw_seconds": 0.0003051999992749188,
+      "gpu_kernel_seconds": null,
+      "gpu_total_seconds": null,
+      "kernel_speedup": null,
+      "end_to_end_speedup": null,
+      "branch_delta_bytes": 96,
+      "cpu_collision_count": 0
+    },
+    {
+      "branches": 10,
+      "branch_setup_seconds": 1.5000005078036338e-06,
+      "cpu_raw_seconds": 0.0001733999997668434,
+      "gpu_kernel_seconds": null,
+      "gpu_total_seconds": null,
+      "kernel_speedup": null,
+      "end_to_end_speedup": null,
+      "branch_delta_bytes": 960,
+      "cpu_collision_count": 3
+    },
+    {
+      "branches": 100,
+      "branch_setup_seconds": 1.0999992809956893e-06,
+      "cpu_raw_seconds": 0.00038580000000365544,
+      "gpu_kernel_seconds": null,
+      "gpu_total_seconds": null,
+      "kernel_speedup": null,
+      "end_to_end_speedup": null,
+      "branch_delta_bytes": 9600,
+      "cpu_collision_count": 35
+    },
+    {
+      "branches": 1000,
+      "branch_setup_seconds": 1.0000003385357559e-06,
+      "cpu_raw_seconds": 0.0030029999998077983,
+      "gpu_kernel_seconds": null,
+      "gpu_total_seconds": null,
+      "kernel_speedup": null,
+      "end_to_end_speedup": null,
+      "branch_delta_bytes": 96000,
+      "cpu_collision_count": 870
+    },
+    {
+      "branches": 10000,
+      "branch_setup_seconds": 1.6999983927235007e-06,
+      "cpu_raw_seconds": 0.17477669999971113,
+      "gpu_kernel_seconds": null,
+      "gpu_total_seconds": null,
+      "kernel_speedup": null,
+      "end_to_end_speedup": null,
+      "branch_delta_bytes": 960000,
+      "cpu_collision_count": 4006
+    }
+  ],
+  "memory": [
+    {
+      "branches": 1,
+      "base_scene_bytes": 1536,
+      "branch_delta_bytes": 768,
+      "naive_full_world_estimate_bytes": 2304,
+      "method": "naive copies base min/max arrays per branch; Reality stores one base array plus branch/object/xyz deltas"
+    },
+    {
+      "branches": 10,
+      "base_scene_bytes": 1536,
+      "branch_delta_bytes": 7680,
+      "naive_full_world_estimate_bytes": 23040,
+      "method": "naive copies base min/max arrays per branch; Reality stores one base array plus branch/object/xyz deltas"
+    },
+    {
+      "branches": 100,
+      "base_scene_bytes": 1536,
+      "branch_delta_bytes": 76800,
+      "naive_full_world_estimate_bytes": 230400,
+      "method": "naive copies base min/max arrays per branch; Reality stores one base array plus branch/object/xyz deltas"
+    },
+    {
+      "branches": 1000,
+      "base_scene_bytes": 1536,
+      "branch_delta_bytes": 768000,
+      "naive_full_world_estimate_bytes": 2304000,
+      "method": "naive copies base min/max arrays per branch; Reality stores one base array plus branch/object/xyz deltas"
+    },
+    {
+      "branches": 10000,
+      "base_scene_bytes": 1536,
+      "branch_delta_bytes": 7680000,
+      "naive_full_world_estimate_bytes": 23040000,
+      "method": "naive copies base min/max arrays per branch; Reality stores one base array plus branch/object/xyz deltas"
+    }
+  ],
+  "tests": {
+    "passed": 61,
+    "failed": 0,
+    "skipped": 3,
+    "xfailed": 0,
+    "runtime_seconds": 3.2697484999989683,
+    "returncode": 0
+  },
+  "cpu_fallback": {
+    "status": "PASS"
+  },
+  "status": "PARTIAL"
+}

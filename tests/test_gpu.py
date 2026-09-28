@@ -9,6 +9,8 @@ from reality._warp_ops import (
     evaluate_aabb_distances_warp,
     evaluate_aabb_intersections_cpu,
     evaluate_aabb_intersections_warp,
+    evaluate_aabb_visibility_cpu,
+    evaluate_aabb_visibility_warp,
     evaluate_branch_transforms_cpu,
     evaluate_branch_transforms_warp,
 )
@@ -58,6 +60,21 @@ def test_aabb_distance_warp_matches_cpu_oracle() -> None:
     actual = evaluate_aabb_distances_warp(minimum, maximum, deltas, pair)
 
     assert np.allclose(actual, expected, rtol=1e-5, atol=1e-5)
+
+
+def test_aabb_visibility_warp_matches_cpu_oracle() -> None:
+    _cuda_or_skip()
+    minimum = np.asarray(
+        [[-0.2, -0.2, -0.2], [4.8, -0.2, -0.2], [1.0, -0.5, -0.5]], dtype=np.float32
+    )
+    maximum = np.asarray([[0.2, 0.2, 0.2], [5.2, 0.2, 0.2], [2.0, 0.5, 0.5]], dtype=np.float32)
+    deltas = np.zeros((7, 3, 3), dtype=np.float32)
+    deltas[1:, 2, 1] = 2.0
+
+    expected = evaluate_aabb_visibility_cpu(minimum, maximum, deltas, target=1, viewer=0)
+    actual = evaluate_aabb_visibility_warp(minimum, maximum, deltas, target=1, viewer=0)
+
+    assert np.array_equal(actual, expected)
 
 
 def test_cuda_branch_batch_uses_custom_kernels() -> None:

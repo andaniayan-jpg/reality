@@ -140,3 +140,30 @@ and batch `visibility` is a deterministic AABB ray experiment. Batched rotations
 are accepted and retained for future kernels, but currently raise `NotImplementedError`
 when evaluated with non-default values. `BatchEvaluation.to_dict()` and
 `RankedFutures.to_dict()` provide machine-readable summaries.
+
+## Exact exploration
+
+`World.explore()` is a convenience layer over `Futures`; it does not introduce a second
+optimizer or different predicate semantics.
+
+```python
+result = world.explore(
+    possibilities=100_000,
+    changes=[reality.position("Shelf", x=(-1.0, 1.0))],
+    constraints=[no_collision("Shelf", "Door")],
+    objectives=[maximize(distance("Shelf", "Door"))],
+    seed=42,
+    best=10,
+)
+```
+
+`PositionSearchChange` declares inclusive coordinate ranges. Candidate sampling is
+deterministic for a seed, constraints are exact hard filters, and objective ties are
+broken by candidate index. `ExplorationResult` exposes backend, counts, scores, compact
+deltas, predicate evidence, `best()`, `to_dict()`, and `to_json()`. Returned candidates
+remain lazy `FutureCandidate` values until `materialize()` is called.
+
+`backend="auto"` selects CUDA only after the accelerator capability check succeeds;
+`backend="cpu"` forces the NumPy reference path. CUDA evaluates the same documented
+AABB semantics as CPU. Any future learned prioritizer is experimental, opt-in, and may
+only order candidates before exact validation; it never changes valid/invalid results.

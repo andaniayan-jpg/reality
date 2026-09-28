@@ -47,6 +47,25 @@ ranked = futures.evaluate([collision("Table", "Sofa"), distance("Table", "Sofa")
 selected = ranked.best(5)[0].materialize()  # only this candidate becomes a branch
 ```
 
+`World.explore()` is the higher-level deterministic search API. It creates compact
+futures, applies hard constraints, ranks exact predicate results, and materializes only
+the returned candidates. Its default backend is CUDA when a validated CUDA device is
+available, otherwise the same CPU reference semantics are used.
+
+```python
+from reality.predicates import distance, maximize, no_collision
+
+result = world.explore(
+    possibilities=100_000,
+    changes=[reality.position("Table", x=(-1.0, 1.0), y=(-1.0, 1.0))],
+    constraints=[no_collision("Table", "Sofa")],
+    objectives=[maximize(distance("Table", "Sofa"))],
+    seed=42,
+)
+print(result.backend, result.best(1)[0].score)
+print(result.to_json())
+```
+
 Every query returns a `PredicateResult`, so callers can inspect `value`, `measurement`, `units`, `reason`, `evidence`, and the involved `objects`.
 
 ## Current scope
@@ -62,6 +81,10 @@ Every query returns a `PredicateResult`, so callers can inspect `value`, `measur
   dependency-aware recomputation, and serializable consequence reports
 - Compact `World.futures()` batches with deterministic CPU collision, distance, and
   AABB visibility predicates, filtering, ranking, and lazy materialization
+- `World.explore()` for seeded, exact constraint search with structured scores,
+  deltas, constraints, evidence, and selected future materialization
+- Optional Warp CUDA batch transforms, collision, distance, and centre-ray AABB
+  visibility, always checked against NumPy CPU oracles on CUDA-capable test hosts
 - Dimensioned agents with deterministic CPU occupancy grids, A* paths,
   reachability, passage checks, clearance evidence, and SVG debug export
 
@@ -81,6 +104,22 @@ person.clearance_to("Exit")
 
 See `examples/navigation.py` and `examples/navigation_branch.py` for runnable programmatic scenes.
 
+## Runnable v0.1 demos
+
+All demos construct a scene programmatically and write a single JSON document to stdout:
+
+```bash
+python examples/room_layout_optimization.py
+python examples/game_level_clearance.py
+python examples/mechanism_feasibility.py
+python examples/robot_planning.py
+```
+
+The optional learned candidate prioritizer is intentionally isolated behind
+`pip install "reality[learn]"`. It can only propose ordering; final candidates are
+always checked using the exact Reality predicate/physics path. See
+`tools/generate_explore_dataset.py` and `tools/train_explore_predictor.py`.
+
 The current geometry layer intentionally uses world-axis-aligned bounding boxes. This is predictable, fast, and backend-neutral; it is not an exact triangle-mesh collision system.
 
 Run the examples with `python examples/query_room.py`, `python examples/visibility.py`, and `python examples/relationships.py` after substituting your scene path and object names.
@@ -91,7 +130,8 @@ Run the examples with `python examples/query_room.py`, `python examples/visibili
 python -m pip install -e ".[dev]"
 ruff format --check .
 ruff check .
-pytest
+python -m mypy src/reality
+pytest -q
 ```
 
 See [PROJECT.md](PROJECT.md), [ARCHITECTURE.md](ARCHITECTURE.md), [API_DESIGN.md](API_DESIGN.md), [ROADMAP.md](ROADMAP.md), and [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -154,7 +194,15 @@ are still outside the current scope.
 
 `world.branches(10_000)` shares one immutable snapshot and stores only `N x 3`
 translation arrays for changed objects. CPU collision-batch evaluation is implemented.
-Warp is optional. Reality now contains two custom Warp kernels for batched transforms and
-AABB overlap, with CPU reference implementations and synchronized timing/validation
-tools. CUDA is never claimed active without a usable driver, successful launches, and
-CPU/GPU parity evidence.
+Warp is optional. Reality contains custom Warp kernels for batched transforms, AABB
+overlap, AABB distance, and centre-ray AABB visibility, with CPU reference
+implementations and synchronized validation tools. CUDA is never claimed active without
+a usable driver, successful launches, and CPU/GPU parity evidence. GPU AABB visibility is
+not mesh-exact visibility.
+
+## Distribution status
+
+The package metadata uses the distributable name `reality` and keeps the import name
+`reality`. Before publishing, run `python -m build`, install the generated wheel in a
+fresh virtual environment, then reserve/upload the name. A PyPI name probe is inherently
+time-sensitive and is recorded in `RELEASE_RESULTS.json` rather than asserted in prose.

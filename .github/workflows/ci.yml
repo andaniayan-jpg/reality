@@ -26,3 +26,22 @@ jobs:
       - run: ruff check .
       - run: python -m mypy src/reality
       - run: pytest
+      - run: python -m build
+      - run: python -m venv .release-venv
+      - run: .release-venv/bin/python -m pip install dist/*.whl
+      - run: .release-venv/bin/python -c "import reality; print(reality.__name__)"
+
+  cuda:
+    # Enable only after configuring a self-hosted NVIDIA runner with this repository
+    # variable. The CPU job above remains the required portable release gate.
+    if: ${{ vars.REALITY_CUDA_RUNNER == 'true' }}
+    runs-on: [self-hosted, linux, x64, gpu]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev,gpu]"
+      - run: python -m pytest tests/test_gpu.py -q
+      - run: python tools/futures_audit.py --full --output FUTURES_AUDIT.md

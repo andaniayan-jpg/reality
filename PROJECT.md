@@ -40,11 +40,20 @@ typed conditions, and ranked with objectives. This is a CPU reference implementa
 first; rotations and scales are recorded in compact state but are not yet evaluated by
 batched predicates.
 
+`World.explore()` turns that exact batch substrate into a reproducible optimization API:
+seeded compact candidate generation, typed hard constraints, objective ranking, evidence,
+and lazy materialization of only the selected worlds. It is intentionally not a black-box
+planner. CUDA may accelerate documented AABB predicate kernels after real-device parity
+validation, but candidate validity always has the same CPU-reference meaning. An optional
+experimental learned prioritizer may order candidates generated from Reality ground truth;
+it is never allowed to replace exact predicate or physics validation.
+
 ## Non-goals for this milestone
 
-AI, natural-language querying, Blender integration, and unvalidated GPU claims remain out
-of scope. Navigation, articulation, branchable worlds, CPU physics, and CPU batched
-evaluation are now implemented foundations.
+AI, natural-language querying, Blender integration, exact mesh collision/visibility, and
+unvalidated GPU claims remain out of scope. Navigation, articulation, branchable worlds,
+CPU physics, exact AABB batched evaluation, and optional validated CUDA kernels are now
+implemented foundations.
 
 ## Principles
 

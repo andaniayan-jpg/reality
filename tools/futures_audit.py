@@ -20,6 +20,8 @@ from reality._warp_ops import (
     evaluate_aabb_distances_warp,
     evaluate_aabb_intersections_cpu,
     evaluate_aabb_intersections_warp,
+    evaluate_aabb_visibility_cpu,
+    evaluate_aabb_visibility_warp,
     evaluate_branch_transforms_cpu,
     evaluate_branch_transforms_warp,
 )
@@ -92,12 +94,15 @@ def gpu_validation() -> dict[str, Any]:
         "branch_transforms",
         "aabb_intersections",
         "aabb_distances",
+        "aabb_visibility",
     )
     result: dict[str, Any] = {
         "cuda_available": cuda.cuda_available,
         "device": device,
         "custom_warp_kernels_tested": list(kernels),
-        "gpu_test_count": len(kernels),
+        "kernel_parity_count": len(kernels),
+        "kernel_parity_pass_count": 0,
+        "gpu_test_count": 0,
         "gpu_pass_count": 0,
         "cpu_gpu_parity": "NOT_RUN",
         "gpu_execution_used": False,
@@ -106,6 +111,7 @@ def gpu_validation() -> dict[str, Any]:
     }
     if not cuda.cuda_available or device is None:
         result["custom_warp_kernels_tested"] = []
+        result["kernel_parity_count"] = 0
         result["gpu_test_count"] = 0
         result["cpu_gpu_parity"] = "NOT_RUN"
         return result
@@ -145,26 +151,35 @@ def gpu_validation() -> dict[str, Any]:
                 atol=1e-5,
             ),
         ),
+        (
+            "aabb_visibility",
+            lambda: np.array_equal(
+                evaluate_aabb_visibility_warp(
+                    minimum, maximum, deltas, target=2, viewer=0, device=device
+                ),
+                evaluate_aabb_visibility_cpu(minimum, maximum, deltas, target=2, viewer=0),
+            ),
+        ),
     )
     for name, check in checks:
         try:
             passed = bool(check())
             result["gpu_execution_used"] = True
             if passed:
-                result["gpu_pass_count"] += 1
+                result["kernel_parity_pass_count"] += 1
             else:
                 result["failures"].append(f"{name}: CPU/GPU parity mismatch")
         except Exception as error:  # pragma: no cover - hardware/runtime dependent
             result["failures"].append(f"{name}: {error}")
     result["cpu_gpu_parity"] = (
         "PASS"
-        if result["gpu_pass_count"] == len(kernels)
+        if result["kernel_parity_pass_count"] == len(kernels)
         and not result["failures"]
         and result["pytest"]["status"] == "PASS"
         else "FAIL"
     )
-    result["gpu_test_count"] = result["pytest"]["count"] or len(kernels)
-    result["gpu_pass_count"] = result["pytest"]["passed"]
+    result["gpu_test_count"] = len(kernels) + result["pytest"]["count"]
+    result["gpu_pass_count"] = result["kernel_parity_pass_count"] + result["pytest"]["passed"]
     if result["pytest"]["status"] == "ERROR":
         result["failures"].append("GPU pytest validation could not be parsed")
     return result
@@ -237,8 +252,6 @@ def audit(full: bool) -> dict[str, Any]:
             "Add GPU reduction kernels for filtering and ranking to reduce host transfers.",
         ],
     }
-    if cuda.cuda_available:
-        report["status"] = "PASS"
     if full:
         report["scaling"] = []
         for count in (100, 1_000, 10_000, 50_000, 100_000):

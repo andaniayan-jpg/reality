@@ -47,18 +47,20 @@ Each milestone must preserve the baseline API and document its numerical semanti
 - CUDA correctness and scale validation notebook/audit; final GPU validation remains
   blocked by unavailable CUDA hardware on the development machine
 
-## 0.7 — parallel futures and consequence search (current)
+## 0.7 — parallel futures and consequence search (implemented for 0.1)
 
 - Shared-snapshot `World.futures()` batches with copy-on-write candidate materialization
 - Deterministic CPU collision, AABB distance, and bounding-volume visibility evaluation
 - Typed filtering constraints, weighted objectives, ranking, and selected-future consequences
 - Custom Warp AABB distance kernel with a NumPy oracle and CUDA parity test
-- Reproducible 100–100,000 candidate scaling audit; local GPU status remains PARTIAL
+- Reproducible 100–1,000,000 candidate exact CPU scaling audit
+- `World.explore()` seeded constraint/objective search plus machine-readable demos
+- Warp centre-ray AABB visibility with a CPU oracle and CUDA parity coverage
 
-The next performance step is to keep immutable bounds and broad-phase data resident on
-the GPU, then batch visibility rays and ranking reductions. Exact triangle visibility,
-batched rotations/scales, and GPU graph updates remain deliberately out of scope until
-the CPU semantics are extended and benchmarked.
+The next performance step is to retain immutable bounds and broad-phase data on the GPU
+across independent evaluations, then add GPU filtering/ranking reductions. Exact triangle
+visibility, batched rotations/scales, and GPU graph updates remain deliberately out of
+scope until the CPU semantics are extended and benchmarked.
 
 ## Performance path
 

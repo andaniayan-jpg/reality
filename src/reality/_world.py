@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import replace
 from datetime import UTC, datetime
 from math import sqrt
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 from uuid import uuid4
 
 from ._articulation import (
@@ -42,7 +42,9 @@ from ._state import ConsequenceSet, WorldSnapshot, snapshot_indexes
 if TYPE_CHECKING:
     from ._batch import BranchBatch, Futures
     from ._branch import WorldBranch
+    from ._explore import ExplorationResult, PositionSearchChange
     from .backends.base import PhysicsBackend
+    from .predicates import Condition, Objective
 
 ObjectReference: TypeAlias = str | WorldObject
 AgentReference: TypeAlias = str | Agent
@@ -840,6 +842,31 @@ class World:
 
         selected = backend or self.compute_backend
         return Futures(self, count, backend=selected)
+
+    def explore(
+        self,
+        *,
+        possibilities: int,
+        changes: Iterable[PositionSearchChange | Mapping[str, Any]],
+        constraints: Iterable[Condition] = (),
+        objectives: Iterable[Objective] = (),
+        seed: int = 0,
+        best: int = 10,
+        backend: Literal["cpu", "cuda"] | None = None,
+    ) -> ExplorationResult:
+        """Search compact alternate worlds with exact predicates and lazy materialization."""
+        from ._explore import explore
+
+        return explore(
+            self,
+            possibilities=possibilities,
+            changes=tuple(changes),
+            constraints=tuple(constraints),
+            objectives=tuple(objectives),
+            seed=seed,
+            best=best,
+            backend=backend,
+        )
 
     def compare(self, branch_a: WorldBranch, branch_b: WorldBranch) -> ConsequenceSet:
         """Compare two branches descended from this world."""

@@ -92,10 +92,27 @@ complete `World` per alternative. `World.futures()` is the large-search spelling
 views and selected candidates alone materialize copy-on-write `WorldBranch` instances.
 Vectorized CPU collision, AABB distance, and deterministic bounding-volume visibility
 are implemented, with typed predicate specifications, constraints, and ranking.
-`_warp_ops.py` adds custom Warp kernels for branch/object transforms, AABB overlap, and
-AABB distance, each with a separate NumPy oracle and explicit CUDA synchronization.
-The distance kernel is the first GPU predicate path; visibility remains CPU because its
-ray/occluder loop needs a later broad-phase and reduction design. `_accelerators.py`
-probes optional Warp lazily; this host cannot validate CUDA, so the GPU audit remains
-`PARTIAL` until a real NVIDIA device runs it. Graph and explanation logic remains
+`_warp_ops.py` adds custom Warp kernels for branch/object transforms, AABB overlap, AABB
+distance, and centre-to-centre AABB visibility, each with a separate NumPy oracle and
+explicit CUDA synchronization. `_accelerators.py` probes optional Warp lazily. CUDA is
+considered validated only after launches and CPU/GPU parity tests succeed on that host;
+the audit reports `PARTIAL` when CUDA is absent rather than inferring a result. The
+visibility kernel deliberately has the same conservative AABB semantics as the CPU
+batch path—it is not triangle-mesh ray tracing. Graph and explanation logic remains
 CPU-resident by design.
+
+## Exact search and optional learning
+
+`_explore.py` composes the existing compact `Futures` representation: it samples one
+deterministic delta matrix per declared change, invokes typed predicates in a batch,
+applies exact conditions, ranks stable objective scores, and returns lazy candidates.
+No candidate branch or mesh copy exists until a selected `FutureCandidate` is
+materialized. GPU predicate arrays currently transfer per evaluation; immutable scene
+arrays are not yet retained across independent calls, and ranking/filter reduction stays
+on CPU so its evidence remains inspectable. Those are measured limitations, not hidden
+fallbacks.
+
+`reality.experimental` contains an optional scikit-learn prioritizer. Dataset generation
+uses Reality's exact results as ground truth. The predictor can only propose a candidate
+order; downstream code must run `Futures.evaluate()`/`World.explore()` exact validation
+before accepting a result.

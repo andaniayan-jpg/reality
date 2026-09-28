@@ -108,6 +108,60 @@ if wp is not None:
         )
         output[branch] = wp.sqrt(gap_x * gap_x + gap_y * gap_y + gap_z * gap_z)
 
+    @wp.kernel
+    def _aabb_visibility_kernel(
+        minimum: wp.array(dtype=wp.vec3),
+        maximum: wp.array(dtype=wp.vec3),
+        deltas: wp.array(dtype=wp.vec3),
+        target: int,
+        viewer: int,
+        output: wp.array(dtype=wp.int32),
+        object_count: int,
+    ):
+        """Determine centre-to-centre AABB line-of-sight for one branch."""
+        branch = wp.tid()
+        viewer_offset = deltas[branch * object_count + viewer]
+        target_offset = deltas[branch * object_count + target]
+        origin = (minimum[viewer] + maximum[viewer]) * 0.5 + viewer_offset
+        destination = (minimum[target] + maximum[target]) * 0.5 + target_offset
+        direction = destination - origin
+        visible = 1
+        for object_index in range(object_count):
+            if object_index != target and object_index != viewer:
+                offset = deltas[branch * object_count + object_index]
+                lower = minimum[object_index] + offset
+                upper = maximum[object_index] + offset
+                low = 0.0
+                high = 1.0
+                valid = 1
+                if wp.abs(direction[0]) <= 1.0e-12:
+                    if origin[0] < lower[0] or origin[0] > upper[0]:
+                        valid = 0
+                else:
+                    first = (lower[0] - origin[0]) / direction[0]
+                    second = (upper[0] - origin[0]) / direction[0]
+                    low = wp.max(low, wp.min(first, second))
+                    high = wp.min(high, wp.max(first, second))
+                if wp.abs(direction[1]) <= 1.0e-12:
+                    if origin[1] < lower[1] or origin[1] > upper[1]:
+                        valid = 0
+                else:
+                    first = (lower[1] - origin[1]) / direction[1]
+                    second = (upper[1] - origin[1]) / direction[1]
+                    low = wp.max(low, wp.min(first, second))
+                    high = wp.min(high, wp.max(first, second))
+                if wp.abs(direction[2]) <= 1.0e-12:
+                    if origin[2] < lower[2] or origin[2] > upper[2]:
+                        valid = 0
+                else:
+                    first = (lower[2] - origin[2]) / direction[2]
+                    second = (upper[2] - origin[2]) / direction[2]
+                    low = wp.max(low, wp.min(first, second))
+                    high = wp.min(high, wp.max(first, second))
+                if valid == 1 and high >= low and high >= 0.0 and low <= 1.0:
+                    visible = 0
+        output[branch] = visible
+
 
 def evaluate_branch_transforms_cpu(
     base_positions: NDArray[np.floating[Any]],
@@ -174,6 +228,50 @@ def evaluate_aabb_distances_cpu(
         ]
     )
     return np.linalg.norm(gaps, axis=1).astype(np.float32, copy=False)
+
+
+def evaluate_aabb_visibility_cpu(
+    minimum: NDArray[np.floating[Any]],
+    maximum: NDArray[np.floating[Any]],
+    deltas: NDArray[np.floating[Any]],
+    target: int,
+    viewer: int,
+) -> BoolArray:
+    """CPU oracle for deterministic centre-ray AABB visibility per branch."""
+    lower = np.asarray(minimum, dtype=np.float32)
+    upper = np.asarray(maximum, dtype=np.float32)
+    offsets = np.asarray(deltas, dtype=np.float32)
+    if lower.ndim != 2 or lower.shape[1] != 3 or upper.shape != lower.shape:
+        raise ValueError("minimum and maximum must have shape (objects, 3)")
+    if offsets.ndim != 3 or offsets.shape[1:] != lower.shape:
+        raise ValueError("deltas must have shape (branches, objects, 3)")
+    if not 0 <= target < lower.shape[0] or not 0 <= viewer < lower.shape[0]:
+        raise ValueError("target and viewer must be valid object indices")
+    origin = (lower[viewer] + upper[viewer])[None, :] / 2.0 + offsets[:, viewer, :]
+    destination = (lower[target] + upper[target])[None, :] / 2.0 + offsets[:, target, :]
+    direction = destination - origin
+    visible = np.ones(offsets.shape[0], dtype=np.bool_)
+    for object_index in range(lower.shape[0]):
+        if object_index in {target, viewer}:
+            continue
+        candidate_lower = lower[object_index][None, :] + offsets[:, object_index, :]
+        candidate_upper = upper[object_index][None, :] + offsets[:, object_index, :]
+        low = np.zeros(offsets.shape[0], dtype=np.float32)
+        high = np.ones(offsets.shape[0], dtype=np.float32)
+        valid = np.ones(offsets.shape[0], dtype=np.bool_)
+        for axis in range(3):
+            parallel = np.abs(direction[:, axis]) <= 1.0e-12
+            valid &= ~parallel | (
+                (origin[:, axis] >= candidate_lower[:, axis])
+                & (origin[:, axis] <= candidate_upper[:, axis])
+            )
+            safe_direction = np.where(parallel, 1.0, direction[:, axis])
+            first = (candidate_lower[:, axis] - origin[:, axis]) / safe_direction
+            second = (candidate_upper[:, axis] - origin[:, axis]) / safe_direction
+            low = np.maximum(low, np.minimum(first, second))
+            high = np.minimum(high, np.maximum(first, second))
+        visible &= ~(valid & (high >= low) & (high >= 0.0) & (low <= 1.0))
+    return visible
 
 
 def _ensure_warp(device: str) -> Any:
@@ -303,6 +401,49 @@ def evaluate_aabb_distances_warp(
     )
     warp.synchronize_device(device)
     return np.asarray(output_device.numpy(), dtype=np.float32)
+
+
+def evaluate_aabb_visibility_warp(
+    minimum: NDArray[np.floating[Any]],
+    maximum: NDArray[np.floating[Any]],
+    deltas: NDArray[np.floating[Any]],
+    target: int,
+    viewer: int,
+    *,
+    device: str = "cuda:0",
+) -> BoolArray:
+    """Launch Reality's deterministic AABB visibility kernel and synchronize it."""
+    warp = _ensure_warp(device)
+    lower = np.asarray(minimum, dtype=np.float32)
+    upper = np.asarray(maximum, dtype=np.float32)
+    offsets = np.asarray(deltas, dtype=np.float32)
+    if lower.ndim != 2 or lower.shape[1] != 3 or upper.shape != lower.shape:
+        raise ValueError("minimum and maximum must have shape (objects, 3)")
+    if offsets.ndim != 3 or offsets.shape[1:] != lower.shape:
+        raise ValueError("deltas must have shape (branches, objects, 3)")
+    if not 0 <= target < lower.shape[0] or not 0 <= viewer < lower.shape[0]:
+        raise ValueError("target and viewer must be valid object indices")
+    object_count = lower.shape[0]
+    lower_device = warp.array(lower, dtype=warp.vec3, device=device)
+    upper_device = warp.array(upper, dtype=warp.vec3, device=device)
+    offsets_device = warp.array(offsets.reshape(-1, 3), dtype=warp.vec3, device=device)
+    output_device = warp.zeros(offsets.shape[0], dtype=warp.int32, device=device)
+    warp.launch(
+        _aabb_visibility_kernel,
+        dim=offsets.shape[0],
+        inputs=[
+            lower_device,
+            upper_device,
+            offsets_device,
+            target,
+            viewer,
+            output_device,
+            object_count,
+        ],
+        device=device,
+    )
+    warp.synchronize_device(device)
+    return np.asarray(output_device.numpy(), dtype=np.int32).astype(np.bool_, copy=False)
 
 
 def benchmark_branch_transform_warp(

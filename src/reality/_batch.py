@@ -183,12 +183,10 @@ class RankedFutures:
     def best(self, count: int) -> tuple[FutureCandidate, ...]:
         if count < 0:
             raise ValueError("count must be non-negative")
-        order = sorted(
-            (int(index) for index in self.indices),
-            key=lambda index: (-float(self.scores[index]), index),
-        )[:count]
+        selected_scores = self.scores[self.indices]
+        order = self.indices[np.lexsort((self.indices, -selected_scores))[:count]]
         return tuple(
-            self.evaluation._futures._candidate(index, self.evaluation, self.scores[index])  # type: ignore[union-attr]
+            self.evaluation._futures._candidate(int(index), self.evaluation, self.scores[index])  # type: ignore[union-attr]
             for index in order
         )
 
@@ -383,6 +381,7 @@ class BranchBatch:
         from ._warp_ops import (
             evaluate_aabb_distances_warp,
             evaluate_aabb_intersections_warp,
+            evaluate_aabb_visibility_warp,
             evaluate_branch_transforms_warp,
         )
 
@@ -392,15 +391,20 @@ class BranchBatch:
         extents = (maximum - minimum) / 2.0
         deltas = self._all_deltas().astype(np.float32, copy=False)
         transformed = evaluate_branch_transforms_warp(centers, deltas)
+        collision_pairs = {
+            tuple(
+                sorted(
+                    (
+                        self._index[self._resolve(spec.object_a).id],
+                        self._index[self._resolve(spec.object_b or "").id],
+                    )
+                )
+            )
+            for spec in specs
+            if spec.kind == "collision"
+        }
+        pairs = np.asarray(sorted(collision_pairs), dtype=np.int32).reshape(-1, 2)
         pair_map: dict[tuple[int, int], int] = {}
-        pairs = np.asarray(
-            [
-                (first, second)
-                for first in range(len(self._ids))
-                for second in range(first + 1, len(self._ids))
-            ],
-            dtype=np.int32,
-        ).reshape(-1, 2)
         for index, pair in enumerate(pairs):
             pair_map[(int(pair[0]), int(pair[1]))] = index
         result: dict[str, ValuesArray] = {}
@@ -410,8 +414,10 @@ class BranchBatch:
         for spec in specs:
             first = self._index[self._resolve(spec.object_a).id]
             if spec.kind == "visibility":
-                viewer = self._resolve(spec.viewer or "").id
-                result[spec.key] = self._visibility_cpu(self._resolve(spec.object_a).id, viewer)
+                viewer = self._index[self._resolve(spec.viewer or "").id]
+                result[spec.key] = evaluate_aabb_visibility_warp(
+                    minimum, maximum, deltas, first, viewer
+                )
             else:
                 second = self._index[self._resolve(spec.object_b or "").id]
                 sorted_pair = sorted((first, second))

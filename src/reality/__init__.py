@@ -18,6 +18,7 @@ from ._batch import (
     RankedFutures,
 )
 from ._branch import WorldBranch
+from ._explore import ExplorationResult, PositionSearchChange, position
 from ._graph import GraphUpdateStats, RealityGraph, Relationship, RelationshipType
 from ._loaders import load
 from ._metadata import SceneMetadataError
@@ -82,12 +83,14 @@ __all__ = [
     "FutureCandidate",
     "FutureSelection",
     "Futures",
+    "ExplorationResult",
     "Joint",
     "MoveObject",
     "MotionResult",
     "NavigationGrid",
     "ObjectNotFoundError",
     "PhysicalProperties",
+    "PositionSearchChange",
     "PhysicsBackendUnavailableError",
     "PredicateResult",
     "PrismaticJoint",
@@ -119,6 +122,7 @@ __all__ = [
     "maximize",
     "minimize",
     "no_collision",
+    "position",
     "visibility",
     "warp_status",
 ]

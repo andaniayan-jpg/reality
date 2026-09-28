@@ -24,9 +24,10 @@ classifiers = [
 dependencies = ["numpy>=1.26", "trimesh>=4.0"]
 
 [project.optional-dependencies]
-dev = ["mypy>=1.11", "pytest>=8.0", "ruff>=0.6"]
+dev = ["build>=1.2", "mypy>=1.11", "pytest>=8.0", "ruff>=0.6"]
 physics = ["mujoco>=3.2"]
 gpu = ["warp-lang>=1.9"]
+learn = ["scikit-learn>=1.4"]
 
 [project.urls]
 Homepage = "https://github.com/andaniayan-jpg/reality"

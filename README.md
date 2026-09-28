@@ -8,6 +8,8 @@
 python -m pip install reality
 ```
 
+After installation, run `reality` (or `python -m reality`) for the package greeting.
+
 ```python
 import reality
 

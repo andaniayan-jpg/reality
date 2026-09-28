@@ -1,6 +1,6 @@
 {
   "status": "PARTIAL",
-  "revision": "6ec051b1f9fc1dccff4e04a3a146dd407819eccb",
+  "revision": "6f7f1104ebe99d01a04b340d87617c7ba9e5c7dd",
   "python": "3.11.9",
   "platform": "Windows-10-10.0.26200-SP0",
   "cuda": {
@@ -16,7 +16,7 @@
   "futures": 10000,
   "delta_bytes": 240000,
   "logical_delta_bytes": 240000,
-  "evaluation_seconds": 0.6386044999962905,
+  "evaluation_seconds": 1.0672608000022592,
   "selected_without_collision": 10000,
   "shared_snapshot": true,
   "predicates": [
@@ -38,32 +38,32 @@
   "scaling": [
     {
       "futures": 100,
-      "creation_seconds": 0.0022120999929029495,
-      "distance_seconds": 0.0002683999919099733,
+      "creation_seconds": 0.002378399993176572,
+      "distance_seconds": 0.00021040000137872994,
       "delta_bytes": 2400
     },
     {
       "futures": 1000,
-      "creation_seconds": 0.0019154000037815422,
-      "distance_seconds": 0.001151199990999885,
+      "creation_seconds": 0.002693900009035133,
+      "distance_seconds": 0.0005347999976947904,
       "delta_bytes": 24000
     },
     {
       "futures": 10000,
-      "creation_seconds": 0.004345000008470379,
-      "distance_seconds": 0.004592799989040941,
+      "creation_seconds": 0.0028705000004265457,
+      "distance_seconds": 0.0025382000021636486,
       "delta_bytes": 240000
     },
     {
       "futures": 50000,
-      "creation_seconds": 0.012392300006467849,
-      "distance_seconds": 0.023123999999370426,
+      "creation_seconds": 0.004803100004210137,
+      "distance_seconds": 0.014188400004059076,
       "delta_bytes": 1200000
     },
     {
       "futures": 100000,
-      "creation_seconds": 0.018844299993361346,
-      "distance_seconds": 0.047091400003409944,
+      "creation_seconds": 0.011382600001525134,
+      "distance_seconds": 0.026932200009468943,
       "delta_bytes": 2400000
     }
   ],

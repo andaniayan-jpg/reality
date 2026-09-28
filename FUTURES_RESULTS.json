@@ -1,6 +1,6 @@
 {
   "status": "PARTIAL",
-  "revision": "6f7f1104ebe99d01a04b340d87617c7ba9e5c7dd",
+  "revision": "7a5c8769b3ecf65e2c5107fda1a78f75513ac2f3",
   "python": "3.11.9",
   "platform": "Windows-10-10.0.26200-SP0",
   "cuda": {
@@ -12,11 +12,28 @@
     ],
     "reason": "CUDA driver/device is unavailable."
   },
+  "gpu_validation": {
+    "cuda_available": false,
+    "device": null,
+    "custom_warp_kernels_tested": [],
+    "gpu_test_count": 0,
+    "gpu_pass_count": 0,
+    "cpu_gpu_parity": "NOT_RUN",
+    "gpu_execution_used": false,
+    "failures": [],
+    "pytest": {
+      "status": "NOT_RUN",
+      "count": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
   "scene_objects": 1000,
   "futures": 10000,
   "delta_bytes": 240000,
   "logical_delta_bytes": 240000,
-  "evaluation_seconds": 1.0672608000022592,
+  "evaluation_seconds": 1.6723641999997199,
   "selected_without_collision": 10000,
   "shared_snapshot": true,
   "predicates": [
@@ -26,7 +43,7 @@
   ],
   "visibility_is_bounding_volume": true,
   "limitations": [
-    "Local audit is CPU-only when no CUDA driver is available.",
+    "CUDA validation could not be performed: CUDA driver/device is unavailable.",
     "Visibility uses deterministic AABB ray tests, not exact triangle-mesh rays.",
     "Batched rotation and scale are stored but predicate evaluation is not implemented yet."
   ],
@@ -38,32 +55,32 @@
   "scaling": [
     {
       "futures": 100,
-      "creation_seconds": 0.002378399993176572,
-      "distance_seconds": 0.00021040000137872994,
+      "creation_seconds": 0.004362800013041124,
+      "distance_seconds": 0.0004969000001437962,
       "delta_bytes": 2400
     },
     {
       "futures": 1000,
-      "creation_seconds": 0.002693900009035133,
-      "distance_seconds": 0.0005347999976947904,
+      "creation_seconds": 0.00825759999861475,
+      "distance_seconds": 0.0005552999937208369,
       "delta_bytes": 24000
     },
     {
       "futures": 10000,
-      "creation_seconds": 0.0028705000004265457,
-      "distance_seconds": 0.0025382000021636486,
+      "creation_seconds": 0.0030769000004511327,
+      "distance_seconds": 0.0031276000081561506,
       "delta_bytes": 240000
     },
     {
       "futures": 50000,
-      "creation_seconds": 0.004803100004210137,
-      "distance_seconds": 0.014188400004059076,
+      "creation_seconds": 0.0069909999874653295,
+      "distance_seconds": 0.027788999999756925,
       "delta_bytes": 1200000
     },
     {
       "futures": 100000,
-      "creation_seconds": 0.011382600001525134,
-      "distance_seconds": 0.026932200009468943,
+      "creation_seconds": 0.016787300002761185,
+      "distance_seconds": 0.041703599999891594,
       "delta_bytes": 2400000
     }
   ],

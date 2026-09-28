@@ -29,9 +29,9 @@ physics = ["mujoco>=3.2"]
 gpu = ["warp-lang>=1.9"]
 
 [project.urls]
-Homepage = "https://github.com/reality-python/reality"
-Repository = "https://github.com/reality-python/reality"
-Issues = "https://github.com/reality-python/reality/issues"
+Homepage = "https://github.com/andaniayan-jpg/reality"
+Repository = "https://github.com/andaniayan-jpg/reality"
+Issues = "https://github.com/andaniayan-jpg/reality/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/reality"]

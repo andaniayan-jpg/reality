@@ -232,21 +232,41 @@ class RealityGraph:
 
     def refresh_object(self, reference: ObjectReference) -> GraphUpdateStats:
         """Recalculate only one object's pair relationships."""
-        object_ = self._world.object(reference)
+        return self.refresh_objects((reference,))
+
+    def refresh_objects(self, references: tuple[ObjectReference, ...]) -> GraphUpdateStats:
+        """Refresh the dependency frontier for several changed objects once.
+
+        Simulation commonly changes many dynamic objects during one fixed-step run.
+        Repeating a single-object refresh would evaluate changed/changed pairs twice
+        and invalidate lazy query state many times.  This method preserves the
+        existing incremental semantics while evaluating each affected pair once.
+        """
+        changed = tuple(dict.fromkeys(self._world.object(reference).id for reference in references))
+        if not changed:
+            return GraphUpdateStats(self.predicate_count, 0, 0, self.predicate_count)
         predicates_before = self.predicate_count
         visibility_count = len(self.visibility_records())
-        self.invalidate_object(object_)
+        for object_id in changed:
+            self.invalidate_object(object_id)
         self.invalidate_visibility_queries()
         navigation_invalidated = self.invalidate_navigation_relationships()
         motion_invalidated = self.invalidate_motion_relationships()
-        pair_count = 0
-        for other in self._world.objects:
-            if other.id != object_.id:
-                self._create_pair_relationships(object_, other)
-                pair_count += 1
+        changed_ids = set(changed)
+        pair_ids: set[tuple[str, str]] = set()
+        for object_id in changed:
+            for other in self._world.objects:
+                if other.id == object_id:
+                    continue
+                first_id, second_id = sorted((object_id, other.id))
+                pair_ids.add((first_id, second_id))
+        for first_id, second_id in sorted(pair_ids):
+            self._create_pair_relationships(
+                self._world.object(first_id), self._world.object(second_id)
+            )
         if not self._persistent_base:
-            self._invalidated.discard(object_.id)
-        recalculated = pair_count * self.PREDICATES_PER_PAIR
+            self._invalidated.difference_update(changed_ids)
+        recalculated = len(pair_ids) * self.PREDICATES_PER_PAIR
         invalidated = recalculated + visibility_count + navigation_invalidated + motion_invalidated
         return GraphUpdateStats(
             predicates_before=predicates_before,

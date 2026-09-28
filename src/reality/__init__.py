@@ -13,6 +13,7 @@ from ._batch import BatchEvaluation, BranchBatch
 from ._branch import WorldBranch
 from ._graph import GraphUpdateStats, RealityGraph, Relationship, RelationshipType
 from ._loaders import load
+from ._metadata import SceneMetadataError
 from ._models import Bounds, PhysicalProperties, PredicateResult, Transform, WorldObject
 from ._navigation import (
     Agent,
@@ -77,6 +78,7 @@ __all__ = [
     "RevoluteJoint",
     "RotateObject",
     "ScaleObject",
+    "SceneMetadataError",
     "SimulationResult",
     "StabilityResult",
     "Transform",

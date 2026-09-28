@@ -42,6 +42,7 @@ from ._state import ConsequenceSet, WorldSnapshot, snapshot_indexes
 if TYPE_CHECKING:
     from ._batch import BranchBatch
     from ._branch import WorldBranch
+    from .backends.base import PhysicsBackend
 
 ObjectReference: TypeAlias = str | WorldObject
 AgentReference: TypeAlias = str | Agent
@@ -96,6 +97,7 @@ class World:
         self._articulations: dict[str, Articulation] = {}
         self._motion_cache: dict[MotionKey, MotionResult] = {}
         self._simulation_results: list[SimulationResult] = []
+        self._physics_backends: dict[str, PhysicsBackend] = {}
         self._lineage_id = uuid4().hex
         self._version = 0
         self._snapshot_cache: WorldSnapshot | None = None
@@ -143,6 +145,7 @@ class World:
             for object_ in self._by_name[updated.name]
         ]
         self.graph.refresh_object(updated)
+        self._restore_articulation_relationships((updated,))
         for target_id, viewer_id in visibility_queries:
             self.visible(target_id, from_=viewer_id)
         self._recalculate_navigation(navigation_queries)
@@ -292,7 +295,10 @@ class World:
         forces: dict[str, tuple[Vector3, float]] | None = None,
     ) -> SimulationResult:
         """Run an isolated fixed-step backend simulation and apply dynamic outcomes."""
-        engine = create_backend(backend)
+        engine = self._physics_backends.get(backend)
+        if engine is None:
+            engine = create_backend(backend)
+            self._physics_backends[backend] = engine
         result = engine.simulate(
             self.objects,
             seconds=float(seconds),
@@ -300,8 +306,9 @@ class World:
             gravity=gravity,
             forces=forces or {},
         )
-        for body in result.bodies:
-            self._apply_simulation_transform(body.object_id, body.final_transform)
+        self._apply_simulation_transforms(
+            {body.object_id: body.final_transform for body in result.bodies}
+        )
         self._simulation_results.append(result)
         return result
 
@@ -444,11 +451,49 @@ class World:
         return updated
 
     def _apply_simulation_transform(self, object_id: str, transform: Transform) -> None:
-        current = self.object(object_id)
+        self._apply_simulation_transforms({object_id: transform})
+
+    def _apply_simulation_transforms(self, transforms: dict[str, Transform]) -> None:
+        """Apply one simulation result atomically before refreshing graph edges.
+
+        A fixed-step solve can move many bodies.  Updating them one-by-one would
+        repeatedly recompute relationships between bodies that all changed in the
+        same solve.  Applying the value-object replacements first lets the graph
+        refresh their combined dependency frontier exactly once.
+        """
+        updated: list[WorldObject] = []
+        for object_id, transform in transforms.items():
+            current = self.object(object_id)
+            if transform == current.transform:
+                continue
+            replacement = replace(current, transform=transform)
+            self._by_id[object_id] = replacement
+            self._by_name[replacement.name] = [
+                replacement if object_.id == object_id else object_
+                for object_ in self._by_name[replacement.name]
+            ]
+            updated.append(replacement)
+        if not updated:
+            return
         if self._build_graph:
-            self.update_transform(current, transform)
-        elif transform != current.transform:
-            self._replace_object(current, replace(current, transform=transform))
+            visibility_queries = self.graph.visibility_query_keys()
+            navigation_queries = tuple(self._navigation_cache)
+            motion_queries = tuple(self._motion_cache)
+            self.graph.refresh_objects(tuple(updated))
+            self._restore_articulation_relationships(updated)
+            for target_id, viewer_id in visibility_queries:
+                self.visible(target_id, from_=viewer_id)
+            self._recalculate_navigation(navigation_queries)
+            self._recalculate_motion(motion_queries)
+        self._version += 1
+        self._snapshot_cache = None
+
+    def _restore_articulation_relationships(self, objects: Iterable[WorldObject]) -> None:
+        """Restore semantic joint edges after geometric graph invalidation."""
+        for object_ in objects:
+            articulation = self._articulations.get(object_.id)
+            if articulation is not None:
+                self.graph.record_articulation(object_, articulation)
 
     def _recalculate_motion(self, queries: tuple[MotionKey, ...]) -> None:
         if not queries:

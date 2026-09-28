@@ -107,5 +107,17 @@ def test_invalid_articulation_metadata(kwargs: dict[str, object], message: str) 
         world.articulate("Door", **kwargs)  # type: ignore[arg-type]
 
 
+def test_articulation_relationship_survives_a_transform_refresh() -> None:
+    world = World([_door()])
+    world.articulate("Door", joint="revolute", axis=(0, 0, 1), limits=(0, 90))
+
+    world.move("Door", x=1.0)
+
+    assert any(
+        relationship.type is RelationshipType.ARTICULATED_WITH
+        for relationship in world.relationships("Door")
+    )
+
+
 def _door() -> WorldObject:
     return WorldObject("Door", Bounds((0.0, 0.0, 0.0), (1.0, 0.1, 2.0)))

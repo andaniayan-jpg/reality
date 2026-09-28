@@ -136,3 +136,40 @@ def test_physical_property_validation() -> None:
         PhysicalProperties(mass=0.0)
     with pytest.raises(ValueError, match="restitution"):
         PhysicalProperties(restitution=1.1)
+
+
+def test_cpu_model_cache_reuses_topology_without_leaking_dynamic_state() -> None:
+    world = _falling_world()
+
+    first = world.simulate(seconds=0.0)
+    second = world.simulate(seconds=0.0)
+
+    assert first.evidence["model_reused"] is False
+    assert second.evidence["model_reused"] is True
+    assert second.body("Box").final_transform.position == pytest.approx((0.0, 0.0, 2.0))
+
+
+def test_cpu_physics_preserves_orientation_mapping() -> None:
+    world = World(
+        [
+            _box(
+                "Box",
+                (-0.2, -0.1, -0.1),
+                (0.2, 0.1, 0.1),
+                position=(0.0, 0.0, 2.0),
+                dynamic=True,
+            )
+        ]
+    )
+    world.update_transform("Box", Transform(position=(0.0, 0.0, 2.0), rotation=(0.2, -0.1, 0.4)))
+
+    result = world.simulate(seconds=0.0)
+
+    assert result.body("Box").final_transform.rotation == pytest.approx((0.2, -0.1, 0.4))
+
+
+def test_force_validation_rejects_unknown_or_static_objects() -> None:
+    world = World([_box("Static", (-0.1, -0.1, 0.0), (0.1, 0.1, 0.2))])
+
+    with pytest.raises(ValueError, match="non-dynamic or unknown"):
+        world.simulate(seconds=0.1, forces={"object-1": ((1.0, 0.0, 0.0), 0.1)})

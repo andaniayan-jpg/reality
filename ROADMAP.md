@@ -25,19 +25,23 @@
 - Branch invalidation and downstream navigation consequences
 - Standalone SVG navigation diagnostics
 
-## Next milestones (not implemented)
+## Remaining next milestones
 
 1. Capability interfaces and optional exact mesh-query backends.
-2. Scene metadata, units, and richer import diagnostics.
+2. Richer import diagnostics and unit conversion policy (metadata units are now read,
+   but never implicitly converted).
 3. Explicit physical affordance and visibility capabilities.
-4. Optional simulation, navigation, and counterfactual world APIs.
+4. Simulated joints, additional collision shapes, and calibrated material behavior.
 
 Each milestone must preserve the baseline API and document its numerical semantics.
 
 ## 0.4–0.6 — articulation, CPU physics, and batching (current)
 
 - Explicit revolute/prismatic articulation and swept-AABB analysis
-- Replaceable backend protocol and MuJoCo CPU reference simulation
+- Portable glTF/GLB/sidecar articulation and physics metadata ingestion
+- Replaceable backend protocol and cached MuJoCo CPU reference simulation
+- Orientation and center-of-mass mapping, observed-run contacts, and atomic
+  multi-body graph refresh after simulation
 - Compact CPU batched branch collision evaluation
 - Two custom NVIDIA Warp kernels with CPU oracles and synchronized timing harnesses
 - CUDA correctness and scale validation notebook/audit; final GPU validation remains

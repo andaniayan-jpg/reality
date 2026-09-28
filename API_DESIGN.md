@@ -91,14 +91,24 @@ Agent category names have no behavioral meaning. Only dimensions and optional mo
 
 `World.articulate`, `can_open`, `can_extend`, and the `ArticulatedObject` handle return a
 `MotionResult` with requested/maximum motion, blockers, units, reason, samples, and
-evidence. Configuration is explicit, deterministic metadata.
+evidence. Configuration is explicit, deterministic metadata. `reality.load` reads the
+same schema from a `.reality.json` sidecar, glTF/GLB `extras.reality`, or an explicit
+`metadata=` mapping. The schema supports `units`, `objects.<name>.articulation`, and
+`objects.<name>.physics`; malformed or unknown fields raise `SceneMetadataError` rather
+than being guessed or ignored. The object reference must resolve to a unique loaded
+object. Later metadata sources override earlier articulation/physics fields; `units`
+labels coordinates and never triggers implicit rescaling.
 
 ## Physics
 
 `PhysicalProperties` describes mass, static/dynamic state, box collision shape,
 friction, restitution, and center-of-mass offset. `simulate`, `drop`, `push`, `contacts`,
 and `stable` return backend-neutral typed results. Simulation-observed consequences are
-labeled separately from direct and downstream deterministic consequences.
+labeled separately from direct and downstream deterministic consequences. MuJoCo uses
+oriented boxes built from local bounds and maps dynamic position and orientation back
+to `Transform`. It caches immutable compiled topology per world/backend and creates a
+fresh simulation state for every call, preserving branch isolation. Performance timing
+and cache reuse are reported in `SimulationResult.evidence`.
 
 ## Branch batches
 

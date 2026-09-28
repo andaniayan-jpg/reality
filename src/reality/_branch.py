@@ -69,6 +69,7 @@ class WorldBranch(World):
             for object_id, kind, requested, result in snapshot.motion
         }
         self._simulation_results: list[SimulationResult] = []
+        self._physics_backends = {}
         self._changes: list[Change] = []
         self._updates: list[GraphUpdateStats] = []
         self._version = snapshot.version
@@ -278,11 +279,47 @@ class WorldBranch(World):
         return updated
 
     def _apply_simulation_transform(self, object_id: str, transform: Transform) -> None:
-        current = self.object(object_id)
+        self._apply_simulation_transforms({object_id: transform})
+
+    def _apply_simulation_transforms(self, transforms: dict[str, Transform]) -> None:
+        """Apply a solver result without recording synthetic user transform changes."""
+        updated: list[WorldObject] = []
+        for object_id, transform in transforms.items():
+            current = self.object(object_id)
+            if transform == current.transform:
+                continue
+            replacement = replace(current, transform=transform)
+            self._overrides[object_id] = replacement
+            updated.append(replacement)
+        if not updated:
+            return
         if self._build_graph:
-            self._commit_transform(current, transform, [])
-        elif transform != current.transform:
-            self._replace_object(current, replace(current, transform=transform))
+            visibility_queries = self.graph.visibility_query_keys()
+            navigation_queries = tuple(self._navigation_cache)
+            motion_queries = tuple(self._motion_cache)
+            stats = self.graph.refresh_objects(tuple(updated))
+            self._restore_articulation_relationships(updated)
+            for target_id, viewer_id in visibility_queries:
+                self.visible(target_id, from_=viewer_id)
+            self._recalculate_navigation(navigation_queries)
+            self._recalculate_motion(motion_queries)
+            if visibility_queries:
+                stats = replace(stats, recalculated=stats.recalculated + len(visibility_queries))
+            if navigation_queries:
+                stats = replace(
+                    stats,
+                    invalidated=stats.invalidated + len(navigation_queries),
+                    recalculated=stats.recalculated + len(navigation_queries),
+                )
+            if motion_queries:
+                stats = replace(
+                    stats,
+                    invalidated=stats.invalidated + len(motion_queries),
+                    recalculated=stats.recalculated + len(motion_queries),
+                )
+            self._updates.append(stats)
+        self._version += 1
+        self._snapshot_cache = None
 
     def _commit_transform(
         self,
@@ -298,6 +335,7 @@ class WorldBranch(World):
         updated = replace(current, transform=transform)
         self._overrides[updated.id] = updated
         stats = self.graph.refresh_object(updated)
+        self._restore_articulation_relationships((updated,))
         for target_id, viewer_id in visibility_queries:
             self.visible(target_id, from_=viewer_id)
         self._recalculate_navigation(navigation_queries)

@@ -20,6 +20,13 @@ without making Reality itself a physics engine. Batched delta arrays are the sca
 for evaluating many alternate worlds; GPU work is accepted only after CPU-reference
 correctness and actual-device benchmarks.
 
+Imported physical meaning is deliberately explicit and portable. A scene can carry a
+small Reality metadata document in glTF/GLB extras or a sidecar file to declare units,
+joints, and rigid-body properties. Reality validates that document and resolves it to
+already-loaded objects; it never guesses a hinge or material from mesh names. The MuJoCo
+reference backend reuses compiled topology while allocating fresh state for each run, so
+CPU simulation is faster for repeated scenarios without compromising branch isolation.
+
 ## Foundation milestone
 
 This repository establishes the stable core: scene loading, value objects, object lookup, deterministic spatial predicates, a dependency-aware Reality Graph, persistent world branches, and consequence comparison. It provides a clean seam for future rendering, exact-geometry, semantic, and simulation backends without exposing any one of them in the public API.

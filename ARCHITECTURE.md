@@ -61,6 +61,12 @@ Navigation queries are lazy and cached by agent/target id. Their `reachable_by`,
 
 ## Articulation and replaceable physics
 
+`_metadata.py` validates the portable, explicit Reality metadata schema. `_loaders.py`
+collects glTF/GLB `extras.reality`, an optional `.reality.json` sidecar, and caller
+metadata in that precedence order. It applies validated articulation and physical
+properties after geometry loading. This keeps mesh import backend-neutral and avoids
+inventing physical semantics from names or topology.
+
 `_articulation.py` stores explicit revolute/prismatic joints. It samples swept
 world-AABBs at 1 degree or 0.01 m by default and binary-refines the first collision to
 0.01 degree or 0.0001 m. Conservative AABBs can produce mesh-shape false positives;
@@ -69,8 +75,13 @@ graph dependencies and are recalculated after relevant geometry changes.
 
 `backends/base.py` defines Reality's narrow `PhysicsBackend` protocol.
 `backends/mujoco.py` is the CPU reference: explicit properties become headless MuJoCo
-box rigid bodies and results return through backend-neutral values. Current limitations
-include AABB colliders, a z=0 plane, and no rotational state mapping or simulated joints.
+oriented box rigid bodies, including transform rotation and center-of-mass offsets.
+Compiled topology is cached in the world-local backend; every run creates new MuJoCo
+state and initializes dynamic body poses, so cached models never share branch state.
+When a solve changes several bodies, `RealityGraph.refresh_objects()` updates their
+combined dependency frontier once instead of recalculating changed/changed pairs and
+lazy query invalidation per body. Current limitations include box-only collision shapes,
+a z=0 plane, no simulated joints, and no literal restitution-to-MuJoCo mapping.
 
 ## Batched branch memory layout and CUDA boundary
 

@@ -84,7 +84,7 @@ Licensed under [Apache-2.0](LICENSE).
 ## Articulation, physics, and batch branches
 
 Joints are explicit. Reality samples the entire swept AABB path and refines the first
-collision boundary; it does not claim to infer hinges from arbitrary meshes.
+collision boundary; it does not infer hinges from arbitrary meshes.
 
 ```python
 door = world.articulate(
@@ -92,6 +92,33 @@ door = world.articulate(
 )
 print(door.can_rotate(90).reason)
 ```
+
+### Import explicit metadata
+
+For a portable imported scene, place a `room.reality.json` file next to
+`room.glb`/`room.gltf` (or use `extras.reality` in glTF/GLB). Metadata is explicit;
+Reality does not infer a hinge, mass, or material behavior from object names.
+
+```json
+{
+  "units": "m",
+  "objects": {
+    "Door": {
+      "articulation": {
+        "joint": "revolute",
+        "axis": [0, 0, 1],
+        "pivot": [0, 0, 0],
+        "limits": [0, 110]
+      },
+      "physics": {"mass": 12, "dynamic": true, "friction": 0.5}
+    }
+  }
+}
+```
+
+You may instead pass this mapping directly: `reality.load("room.glb", metadata=metadata)`.
+An explicit `metadata=` argument overrides the embedded document, which overrides the
+sidecar. `units` labels mesh coordinates; it never silently rescales geometry.
 
 Install the replaceable MuJoCo CPU physics backend with `pip install -e ".[physics]"`:
 
@@ -101,9 +128,12 @@ result = world.push("Box", force=(20, 0, 0), duration=0.2)
 print(result.body("Box").final_transform)
 ```
 
-Physical defaults are explicit: static, 1 kg, AABB box collider, friction 0.5,
+Physical defaults are explicit: static, 1 kg, local-bounds box collider, friction 0.5,
 restitution 0, and center-of-mass offset `(0, 0, 0)`. Semantic materials are not
-inferred.
+inferred. The CPU backend maps orientation and center-of-mass data into MuJoCo. It
+caches compiled topology locally and reports setup/step timing in `result.evidence`.
+MuJoCo contact compliance is not a literal restitution mapping, and simulation joints
+are still outside the current scope.
 
 `world.branches(10_000)` shares one immutable snapshot and stores only `N x 3`
 translation arrays for changed objects. CPU collision-batch evaluation is implemented.

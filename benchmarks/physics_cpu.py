@@ -19,9 +19,12 @@ def run(count: int, seconds: float = 0.1) -> dict[str, object]:
         for index in range(count)
     ]
     world = World(objects, build_graph=False)
-    started = perf_counter()
+    cold_started = perf_counter()
     result = world.simulate(seconds=seconds)
-    elapsed = perf_counter() - started
+    cold_elapsed = perf_counter() - cold_started
+    warm_started = perf_counter()
+    warm = world.simulate(seconds=0.0)
+    warm_elapsed = perf_counter() - warm_started
     branch_started = perf_counter()
     branch = world.branch()
     branch.simulate(seconds=seconds)
@@ -30,7 +33,12 @@ def run(count: int, seconds: float = 0.1) -> dict[str, object]:
         "objects": count,
         "steps": result.steps,
         "stepping_performed": result.steps > 0,
-        "simulation_seconds": elapsed,
+        "cold_simulation_seconds": cold_elapsed,
+        "warm_reset_seconds": warm_elapsed,
+        "cold_model_setup_seconds": result.evidence["model_setup_seconds"],
+        "warm_model_setup_seconds": warm.evidence["model_setup_seconds"],
+        "warm_model_reused": warm.evidence["model_reused"],
+        "stepping_seconds": result.evidence["stepping_seconds"],
         "branch_simulation_seconds": branch_elapsed,
         "contacts": result.contact_count,
     }

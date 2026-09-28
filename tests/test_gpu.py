@@ -5,6 +5,8 @@ import pytest
 
 import reality
 from reality._warp_ops import (
+    evaluate_aabb_distances_cpu,
+    evaluate_aabb_distances_warp,
     evaluate_aabb_intersections_cpu,
     evaluate_aabb_intersections_warp,
     evaluate_branch_transforms_cpu,
@@ -42,6 +44,20 @@ def test_aabb_intersection_warp_matches_cpu_oracle() -> None:
     actual = evaluate_aabb_intersections_warp(centers, extents, pairs)
 
     assert np.array_equal(actual, expected)
+
+
+def test_aabb_distance_warp_matches_cpu_oracle() -> None:
+    _cuda_or_skip()
+    generator = np.random.default_rng(20260928)
+    minimum = generator.normal(size=(9, 3)).astype(np.float32)
+    maximum = minimum + generator.uniform(0.05, 0.5, size=(9, 3)).astype(np.float32)
+    deltas = generator.normal(size=(23, 9, 3)).astype(np.float32)
+    pair = np.asarray((2, 7), dtype=np.int32)
+
+    expected = evaluate_aabb_distances_cpu(minimum, maximum, deltas, pair)
+    actual = evaluate_aabb_distances_warp(minimum, maximum, deltas, pair)
+
+    assert np.allclose(actual, expected, rtol=1e-5, atol=1e-5)
 
 
 def test_cuda_branch_batch_uses_custom_kernels() -> None:

@@ -87,9 +87,15 @@ a z=0 plane, no simulated joints, and no literal restitution-to-MuJoCo mapping.
 
 `_batch.py` keeps one shared snapshot, immutable base bounds, and one dense
 `branch_count x 3` float64 translation array per changed object. It never builds a
-complete `World` per alternative. Vectorized CPU broad-phase collision is implemented.
-`_warp_ops.py` adds two custom Warp kernels: branch/object transform application and
-batched AABB overlap. They have separate NumPy reference implementations and explicit
-CUDA synchronization. `_accelerators.py` probes optional Warp lazily; this host cannot
-validate CUDA, so the GPU audit remains `PARTIAL` until a real NVIDIA device runs it.
-Graph and explanation logic remains CPU-resident by design.
+complete `World` per alternative. `World.futures()` is the large-search spelling;
+`World.branches()` remains compatible with the earlier API. Future candidates are lazy
+views and selected candidates alone materialize copy-on-write `WorldBranch` instances.
+Vectorized CPU collision, AABB distance, and deterministic bounding-volume visibility
+are implemented, with typed predicate specifications, constraints, and ranking.
+`_warp_ops.py` adds custom Warp kernels for branch/object transforms, AABB overlap, and
+AABB distance, each with a separate NumPy oracle and explicit CUDA synchronization.
+The distance kernel is the first GPU predicate path; visibility remains CPU because its
+ray/occluder loop needs a later broad-phase and reduction design. `_accelerators.py`
+probes optional Warp lazily; this host cannot validate CUDA, so the GPU audit remains
+`PARTIAL` until a real NVIDIA device runs it. Graph and explanation logic remains
+CPU-resident by design.

@@ -40,7 +40,7 @@ from ._physics import Contact, SimulationResult, StabilityResult, create_backend
 from ._state import ConsequenceSet, WorldSnapshot, snapshot_indexes
 
 if TYPE_CHECKING:
-    from ._batch import BranchBatch
+    from ._batch import BranchBatch, Futures
     from ._branch import WorldBranch
     from .backends.base import PhysicsBackend
 
@@ -833,6 +833,13 @@ class World:
 
         selected = backend or self.compute_backend
         return BranchBatch(self, count, backend=selected)
+
+    def futures(self, count: int, *, backend: Literal["cpu", "cuda"] | None = None) -> Futures:
+        """Create compact, lazily materialized alternate futures over one snapshot."""
+        from ._batch import Futures
+
+        selected = backend or self.compute_backend
+        return Futures(self, count, backend=selected)
 
     def compare(self, branch_a: WorldBranch, branch_b: WorldBranch) -> ConsequenceSet:
         """Compare two branches descended from this world."""

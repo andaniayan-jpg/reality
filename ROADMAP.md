@@ -47,6 +47,19 @@ Each milestone must preserve the baseline API and document its numerical semanti
 - CUDA correctness and scale validation notebook/audit; final GPU validation remains
   blocked by unavailable CUDA hardware on the development machine
 
+## 0.7 — parallel futures and consequence search (current)
+
+- Shared-snapshot `World.futures()` batches with copy-on-write candidate materialization
+- Deterministic CPU collision, AABB distance, and bounding-volume visibility evaluation
+- Typed filtering constraints, weighted objectives, ranking, and selected-future consequences
+- Custom Warp AABB distance kernel with a NumPy oracle and CUDA parity test
+- Reproducible 100–100,000 candidate scaling audit; local GPU status remains PARTIAL
+
+The next performance step is to keep immutable bounds and broad-phase data resident on
+the GPU, then batch visibility rays and ranking reductions. Exact triangle visibility,
+batched rotations/scales, and GPU graph updates remain deliberately out of scope until
+the CPU semantics are extended and benchmarked.
+
 ## Performance path
 
 The current graph build compares all object pairs and evaluates several AABB predicates per pair: it is intentionally simple and O(n²). The included `benchmarks/graph_200_objects.py` provides a repeatable baseline. Object movement already refreshes only incident edges, but it still compares the changed object against every other object. `benchmarks/branching_1000_objects.py` measures persistent branch creation, memory, incremental recomputation, consequence calculation, and a conservative naive deep-copy comparison.

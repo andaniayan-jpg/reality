@@ -115,3 +115,28 @@ and cache reuse are reported in `SimulationResult.evidence`.
 `World.branches(count)` returns a `BranchBatch`; `randomize("Object.position", ...)`
 stores compact translation deltas and `evaluate(predicates=("collision",))` runs the CPU
 reference batch. CUDA selection is capability-checked and never silently falls back.
+
+`World.futures(count)` returns the named `Futures` form for large alternate-world search:
+
+```python
+from reality.predicates import collision, distance, maximize, no_collision
+
+futures = world.futures(10_000).randomize_position(
+    "Table", x=(-1.0, 1.0), y=(-0.5, 0.5), z=(0.0, 0.0), seed=7
+)
+evaluation = futures.evaluate([collision("Table", "Chair"), distance("Table", "Chair")])
+ranked = evaluation.rank(
+    constraints=[no_collision("Table", "Chair")],
+    objectives=[maximize(distance("Table", "Chair"))],
+)
+candidate = ranked.best(1)[0]
+branch = candidate.materialize()
+```
+
+`PredicateSpec` values are typed and reusable. `where()` applies hard `Condition`
+constraints; `rank()` applies weighted `Objective` values; candidates stay compact until
+`materialize()` or `consequences()` is called. `collision` and `distance` use world AABBs,
+and batch `visibility` is a deterministic AABB ray experiment. Batched rotations/scales
+are accepted and retained for future kernels, but currently raise `NotImplementedError`
+when evaluated with non-default values. `BatchEvaluation.to_dict()` and
+`RankedFutures.to_dict()` provide machine-readable summaries.

@@ -81,6 +81,33 @@ if wp is not None:
             overlap = 0
         output[thread] = overlap
 
+    @wp.kernel
+    def _aabb_distances_kernel(
+        minimum: wp.array(dtype=wp.vec3),
+        maximum: wp.array(dtype=wp.vec3),
+        deltas: wp.array(dtype=wp.vec3),
+        first: int,
+        second: int,
+        output: wp.array(dtype=float),
+        object_count: int,
+    ):
+        """Compute one AABB separation distance per branch."""
+        branch = wp.tid()
+        first_bounds = minimum[first] + deltas[branch * object_count + first]
+        first_upper = maximum[first] + deltas[branch * object_count + first]
+        second_bounds = minimum[second] + deltas[branch * object_count + second]
+        second_upper = maximum[second] + deltas[branch * object_count + second]
+        gap_x = wp.max(
+            wp.max(second_bounds[0] - first_upper[0], first_bounds[0] - second_upper[0]), 0.0
+        )
+        gap_y = wp.max(
+            wp.max(second_bounds[1] - first_upper[1], first_bounds[1] - second_upper[1]), 0.0
+        )
+        gap_z = wp.max(
+            wp.max(second_bounds[2] - first_upper[2], first_bounds[2] - second_upper[2]), 0.0
+        )
+        output[branch] = wp.sqrt(gap_x * gap_x + gap_y * gap_y + gap_z * gap_z)
+
 
 def evaluate_branch_transforms_cpu(
     base_positions: NDArray[np.floating[Any]],
@@ -115,6 +142,38 @@ def evaluate_aabb_intersections_cpu(
     second = branch_centers[:, pair_indices[:, 1], :]
     limits = extents[pair_indices[:, 0], :] + extents[pair_indices[:, 1], :]
     return np.all(np.abs(first - second) <= limits[None, :, :], axis=2)
+
+
+def evaluate_aabb_distances_cpu(
+    minimum: NDArray[np.floating[Any]],
+    maximum: NDArray[np.floating[Any]],
+    deltas: NDArray[np.floating[Any]],
+    pair: NDArray[np.integer[Any]],
+) -> NDArray[np.float32]:
+    """CPU oracle for one AABB separation distance per branch."""
+    lower = np.asarray(minimum, dtype=np.float32)
+    upper = np.asarray(maximum, dtype=np.float32)
+    offsets = np.asarray(deltas, dtype=np.float32)
+    pair_indices = np.asarray(pair, dtype=np.int32)
+    if lower.ndim != 2 or lower.shape[1] != 3 or upper.shape != lower.shape:
+        raise ValueError("minimum and maximum must have shape (objects, 3)")
+    if offsets.ndim != 3 or offsets.shape[1:] != lower.shape:
+        raise ValueError("deltas must have shape (branches, objects, 3)")
+    if pair_indices.shape != (2,):
+        raise ValueError("pair must have shape (2,)")
+    first, second = (int(pair_indices[0]), int(pair_indices[1]))
+    first_lower = lower[first][None, :] + offsets[:, first, :]
+    first_upper = upper[first][None, :] + offsets[:, first, :]
+    second_lower = lower[second][None, :] + offsets[:, second, :]
+    second_upper = upper[second][None, :] + offsets[:, second, :]
+    gaps = np.maximum.reduce(
+        [
+            np.zeros_like(first_lower),
+            second_lower - first_upper,
+            first_lower - second_upper,
+        ]
+    )
+    return np.linalg.norm(gaps, axis=1).astype(np.float32, copy=False)
 
 
 def _ensure_warp(device: str) -> Any:
@@ -201,6 +260,49 @@ def evaluate_aabb_intersections_warp(
         .reshape(branch_count, pair_count)
         .astype(np.bool_, copy=False)
     )
+
+
+def evaluate_aabb_distances_warp(
+    minimum: NDArray[np.floating[Any]],
+    maximum: NDArray[np.floating[Any]],
+    deltas: NDArray[np.floating[Any]],
+    pair: NDArray[np.integer[Any]],
+    *,
+    device: str = "cuda:0",
+) -> NDArray[np.float32]:
+    """Launch Reality's custom AABB distance kernel and synchronize it."""
+    warp = _ensure_warp(device)
+    lower = np.asarray(minimum, dtype=np.float32)
+    upper = np.asarray(maximum, dtype=np.float32)
+    offsets = np.asarray(deltas, dtype=np.float32)
+    pair_indices = np.asarray(pair, dtype=np.int32)
+    if lower.ndim != 2 or lower.shape[1] != 3 or upper.shape != lower.shape:
+        raise ValueError("minimum and maximum must have shape (objects, 3)")
+    if offsets.ndim != 3 or offsets.shape[1:] != lower.shape:
+        raise ValueError("deltas must have shape (branches, objects, 3)")
+    if pair_indices.shape != (2,):
+        raise ValueError("pair must have shape (2,)")
+    object_count = lower.shape[0]
+    lower_device = warp.array(lower, dtype=warp.vec3, device=device)
+    upper_device = warp.array(upper, dtype=warp.vec3, device=device)
+    offsets_device = warp.array(offsets.reshape(-1, 3), dtype=warp.vec3, device=device)
+    output_device = warp.zeros(offsets.shape[0], dtype=warp.float32, device=device)
+    warp.launch(
+        _aabb_distances_kernel,
+        dim=offsets.shape[0],
+        inputs=[
+            lower_device,
+            upper_device,
+            offsets_device,
+            int(pair_indices[0]),
+            int(pair_indices[1]),
+            output_device,
+            object_count,
+        ],
+        device=device,
+    )
+    warp.synchronize_device(device)
+    return np.asarray(output_device.numpy(), dtype=np.float32)
 
 
 def benchmark_branch_transform_warp(

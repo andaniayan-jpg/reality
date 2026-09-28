@@ -31,6 +31,15 @@ CPU simulation is faster for repeated scenarios without compromising branch isol
 
 This repository establishes the stable core: scene loading, value objects, object lookup, deterministic spatial predicates, a dependency-aware Reality Graph, persistent world branches, and consequence comparison. It provides a clean seam for future rendering, exact-geometry, semantic, and simulation backends without exposing any one of them in the public API.
 
+The `World.futures(count)` API extends the branch model to large deterministic searches.
+A future batch keeps one snapshot and dense per-object translation deltas; indexing returns
+a compact `FutureCandidate`, while `.materialize()` creates a normal copy-on-write
+`WorldBranch` only for selected candidates. Predicate specifications (`collision`,
+`distance`, and bounding-volume `visibility`) can be evaluated together, filtered with
+typed conditions, and ranked with objectives. This is a CPU reference implementation
+first; rotations and scales are recorded in compact state but are not yet evaluated by
+batched predicates.
+
 ## Non-goals for this milestone
 
 AI, natural-language querying, Blender integration, and unvalidated GPU claims remain out

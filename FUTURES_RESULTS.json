@@ -1,0 +1,73 @@
+{
+  "status": "PARTIAL",
+  "revision": "6ec051b1f9fc1dccff4e04a3a146dd407819eccb",
+  "python": "3.11.9",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "cuda": {
+    "installed": true,
+    "version": "1.17.0",
+    "cuda_available": false,
+    "devices": [
+      "cpu"
+    ],
+    "reason": "CUDA driver/device is unavailable."
+  },
+  "scene_objects": 1000,
+  "futures": 10000,
+  "delta_bytes": 240000,
+  "logical_delta_bytes": 240000,
+  "evaluation_seconds": 0.6386044999962905,
+  "selected_without_collision": 10000,
+  "shared_snapshot": true,
+  "predicates": [
+    "collision",
+    "distance",
+    "visibility"
+  ],
+  "visibility_is_bounding_volume": true,
+  "limitations": [
+    "Local audit is CPU-only when no CUDA driver is available.",
+    "Visibility uses deterministic AABB ray tests, not exact triangle-mesh rays.",
+    "Batched rotation and scale are stored but predicate evaluation is not implemented yet."
+  ],
+  "gpu_acceleration_next": [
+    "Keep AABB centers/extents resident on GPU across many candidate batches.",
+    "Move visibility ray batches and broad-phase pair culling to Warp kernels.",
+    "Add GPU reduction kernels for filtering and ranking to reduce host transfers."
+  ],
+  "scaling": [
+    {
+      "futures": 100,
+      "creation_seconds": 0.0022120999929029495,
+      "distance_seconds": 0.0002683999919099733,
+      "delta_bytes": 2400
+    },
+    {
+      "futures": 1000,
+      "creation_seconds": 0.0019154000037815422,
+      "distance_seconds": 0.001151199990999885,
+      "delta_bytes": 24000
+    },
+    {
+      "futures": 10000,
+      "creation_seconds": 0.004345000008470379,
+      "distance_seconds": 0.004592799989040941,
+      "delta_bytes": 240000
+    },
+    {
+      "futures": 50000,
+      "creation_seconds": 0.012392300006467849,
+      "distance_seconds": 0.023123999999370426,
+      "delta_bytes": 1200000
+    },
+    {
+      "futures": 100000,
+      "creation_seconds": 0.018844299993361346,
+      "distance_seconds": 0.047091400003409944,
+      "delta_bytes": 2400000
+    }
+  ],
+  "cpu_distance_oracle": [
+    1.0
+  ]
+}

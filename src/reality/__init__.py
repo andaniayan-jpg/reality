@@ -9,7 +9,14 @@ from ._articulation import (
     PrismaticJoint,
     RevoluteJoint,
 )
-from ._batch import BatchEvaluation, BranchBatch
+from ._batch import (
+    BatchEvaluation,
+    BranchBatch,
+    FutureCandidate,
+    Futures,
+    FutureSelection,
+    RankedFutures,
+)
 from ._branch import WorldBranch
 from ._graph import GraphUpdateStats, RealityGraph, Relationship, RelationshipType
 from ._loaders import load
@@ -42,6 +49,17 @@ from ._state import (
     WorldSnapshot,
 )
 from ._world import AmbiguousObjectError, ObjectNotFoundError, World
+from .predicates import (
+    Condition,
+    Objective,
+    PredicateSpec,
+    collision,
+    distance,
+    maximize,
+    minimize,
+    no_collision,
+    visibility,
+)
 
 __all__ = [
     "AmbiguousObjectError",
@@ -53,6 +71,7 @@ __all__ = [
     "BatchEvaluation",
     "BodySimulationResult",
     "BranchBatch",
+    "Condition",
     "Change",
     "ChangeSet",
     "Consequence",
@@ -60,6 +79,9 @@ __all__ = [
     "Contact",
     "ClearanceResult",
     "GraphUpdateStats",
+    "FutureCandidate",
+    "FutureSelection",
+    "Futures",
     "Joint",
     "MoveObject",
     "MotionResult",
@@ -73,6 +95,7 @@ __all__ = [
     "PathResult",
     "RealityGraph",
     "ReachabilityResult",
+    "RankedFutures",
     "Relationship",
     "RelationshipType",
     "RevoluteJoint",
@@ -89,5 +112,13 @@ __all__ = [
     "WarpStatus",
     "UnsupportedPhysicsOperationError",
     "load",
+    "Objective",
+    "PredicateSpec",
+    "collision",
+    "distance",
+    "maximize",
+    "minimize",
+    "no_collision",
+    "visibility",
     "warp_status",
 ]

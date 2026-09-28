@@ -32,6 +32,21 @@ for consequence in future.consequences():
     print(consequence)
 ```
 
+For deterministic alternate-world searches, use one shared snapshot and compact deltas:
+
+```python
+from reality.predicates import collision, distance, maximize, no_collision
+
+futures = world.futures(10_000).randomize_position(
+    "Table", x=(-1.0, 1.0), y=(-0.5, 0.5), z=(0.0, 0.0), seed=7
+)
+ranked = futures.evaluate([collision("Table", "Sofa"), distance("Table", "Sofa")]).rank(
+    constraints=[no_collision("Table", "Sofa")],
+    objectives=[maximize(distance("Table", "Sofa"))],
+)
+selected = ranked.best(5)[0].materialize()  # only this candidate becomes a branch
+```
+
 Every query returns a `PredicateResult`, so callers can inspect `value`, `measurement`, `units`, `reason`, `evidence`, and the involved `objects`.
 
 ## Current scope
@@ -45,6 +60,8 @@ Every query returns a `PredicateResult`, so callers can inspect `value`, `measur
 - Deterministic AABB ray visibility through `world.visible(target, from_=viewer)`
 - Immutable snapshots, copy-on-write world branches, typed transform changes,
   dependency-aware recomputation, and serializable consequence reports
+- Compact `World.futures()` batches with deterministic CPU collision, distance, and
+  AABB visibility predicates, filtering, ranking, and lazy materialization
 - Dimensioned agents with deterministic CPU occupancy grids, A* paths,
   reachability, passage checks, clearance evidence, and SVG debug export
 

@@ -29,7 +29,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install -e ".[dev]"
+      - run: python -m pip install -e ".[dev,physics]"
       - run: ruff format --check .
       - run: ruff check .
       # Run the strict static check once on the oldest supported interpreter.

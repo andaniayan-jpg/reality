@@ -64,3 +64,4 @@ strict = true
 # Reality's optional geometry/physics integrations are external implementation
 # details. Check this package strictly without recursively type-checking them.
 follow_imports = "skip"
+ignore_missing_imports = true

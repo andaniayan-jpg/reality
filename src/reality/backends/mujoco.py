@@ -8,7 +8,7 @@ from math import ceil, cos, sin, sqrt
 from time import perf_counter
 from typing import TypeAlias
 
-import mujoco  # type: ignore[import-untyped]
+import mujoco
 import numpy as np
 
 from .._models import Transform, Vector3, WorldObject

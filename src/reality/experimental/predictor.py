@@ -29,7 +29,7 @@ class CandidatePrioritizer:
     ) -> CandidatePrioritizer:
         """Train an optional regressor from Reality-generated ground truth."""
         try:
-            from sklearn.ensemble import RandomForestRegressor  # type: ignore[import-untyped]
+            from sklearn.ensemble import RandomForestRegressor
         except ImportError as error:  # pragma: no cover - optional dependency
             raise PredictorUnavailableError(
                 "Install reality[learn] to train a predictor."

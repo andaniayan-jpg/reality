@@ -6,7 +6,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import replace
 from datetime import UTC, datetime
 from math import sqrt
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, cast
 from uuid import uuid4
 
 from ._articulation import (
@@ -301,12 +301,15 @@ class World:
         if engine is None:
             engine = create_backend(backend)
             self._physics_backends[backend] = engine
-        result = engine.simulate(
-            self.objects,
-            seconds=float(seconds),
-            time_step=float(time_step),
-            gravity=gravity,
-            forces=forces or {},
+        result = cast(
+            SimulationResult,
+            engine.simulate(
+                self.objects,
+                seconds=float(seconds),
+                time_step=float(time_step),
+                gravity=gravity,
+                forces=forces or {},
+            ),
         )
         self._apply_simulation_transforms(
             {body.object_id: body.final_transform for body in result.bodies}

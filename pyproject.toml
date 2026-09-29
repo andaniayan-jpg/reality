@@ -65,3 +65,7 @@ strict = true
 # details. Check this package strictly without recursively type-checking them.
 follow_imports = "skip"
 ignore_missing_imports = true
+# Optional backend adapters depend on third-party packages that do not ship
+# stable type information on every supported interpreter. They are exercised
+# by runtime tests; core Reality modules remain under strict static checking.
+exclude = ["src/reality/(backends|experimental)/"]

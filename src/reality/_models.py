@@ -55,7 +55,7 @@ class Transform:
             ],
             dtype=np.float64,
         )
-        matrix = np.eye(4, dtype=np.float64)
+        matrix: NDArray[np.float64] = np.eye(4, dtype=np.float64)
         matrix[:3, :3] = rotation @ np.diag(self.scale)
         matrix[:3, 3] = self.position
         return matrix

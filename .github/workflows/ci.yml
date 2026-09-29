@@ -32,7 +32,11 @@ jobs:
       - run: python -m pip install -e ".[dev]"
       - run: ruff format --check .
       - run: ruff check .
-      - run: python -m mypy --no-incremental --follow-imports=skip src/reality
+      # Run the strict static check once on the oldest supported interpreter.
+      # Runtime and packaging checks still run across the complete 3.11–3.13 matrix.
+      - name: Type check (mypy)
+        if: matrix.python-version == '3.11'
+        run: python -m mypy --no-incremental --follow-imports=skip --config-file pyproject.toml src/reality
       - run: pytest
       - run: python -m build
       - run: python -m venv .release-venv

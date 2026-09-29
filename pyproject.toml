@@ -27,7 +27,7 @@ dependencies = ["numpy>=1.26", "trimesh>=4.0"]
 reality = "reality.__main__:main"
 
 [project.optional-dependencies]
-dev = ["build>=1.2", "mypy>=1.11", "pytest>=8.0", "ruff==0.12.10"]
+dev = ["build>=1.2", "mypy==1.17.1", "pytest>=8.0", "ruff==0.12.10"]
 physics = ["mujoco>=3.2"]
 gpu = ["warp-lang>=1.9"]
 learn = ["scikit-learn>=1.4"]

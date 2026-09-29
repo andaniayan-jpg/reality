@@ -53,7 +53,8 @@ def require_cuda() -> None:
     status = warp_status()
     if not status.installed:
         raise AccelerationUnavailableError(
-            "CUDA backend requires optional dependency 'warp-lang'; install reality[gpu]."
+            "CUDA backend requires optional dependency 'warp-lang'; install reality[gpu]. "
+            "Select backend='cpu'."
         )
     if not status.cuda_available:
         raise AccelerationUnavailableError(

@@ -61,3 +61,6 @@ line-ending = "auto"
 python_version = "3.11"
 packages = ["reality"]
 strict = true
+# Reality's optional geometry/physics integrations are external implementation
+# details. Check this package strictly without recursively type-checking them.
+follow_imports = "skip"

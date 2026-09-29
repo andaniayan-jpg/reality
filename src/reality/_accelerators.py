@@ -29,7 +29,7 @@ def warp_status() -> WarpStatus:
     try:
         cache = Path(tempfile.gettempdir()) / "reality-warp-cache"
         os.environ.setdefault("WARP_CACHE_PATH", str(cache))
-        wp.init()  # type: ignore[no-untyped-call]
+        wp.init()
         devices = tuple(str(device) for device in wp.get_devices())
         available = bool(wp.is_cuda_available())
         return WarpStatus(

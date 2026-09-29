@@ -55,7 +55,7 @@ class BatchEvaluation:
     def where(self, *conditions: Condition) -> FutureSelection:
         """Return futures satisfying every hard constraint."""
         evaluation = self._ensure_predicates(tuple(condition.predicate for condition in conditions))
-        mask = np.ones(self.branch_count, dtype=np.bool_)
+        mask: NDArray[np.bool_] = np.ones(self.branch_count, dtype=np.bool_)
         for condition in conditions:
             values = evaluation.predicate_values[condition.predicate.key]
             mask &= np.asarray(condition.evaluate(values), dtype=np.bool_)
@@ -72,13 +72,13 @@ class BatchEvaluation:
         objective_items = _objectives(objectives)
         specs.extend(item.predicate for item in objective_items)
         evaluation = self._ensure_predicates(tuple(specs))
-        mask = np.ones(self.branch_count, dtype=np.bool_)
+        mask: NDArray[np.bool_] = np.ones(self.branch_count, dtype=np.bool_)
         for condition in constraints:
             mask &= np.asarray(
                 condition.evaluate(evaluation.predicate_values[condition.predicate.key]),
                 dtype=np.bool_,
             )
-        scores = np.zeros(self.branch_count, dtype=np.float64)
+        scores: NDArray[np.float64] = np.zeros(self.branch_count, dtype=np.float64)
         for objective in objective_items:
             values = np.asarray(
                 evaluation.predicate_values[objective.predicate.key], dtype=np.float64
@@ -235,7 +235,7 @@ class BranchBatch:
 
     @property
     def delta_bytes(self) -> int:
-        return (
+        return int(
             sum(array.nbytes for array in self._deltas.values())
             + sum(array.nbytes for array in self._rotation_deltas.values())
             + sum(array.nbytes for array in self._scale_factors.values())
@@ -455,14 +455,14 @@ class BranchBatch:
         origin = (viewer_min + viewer_max) / 2.0
         target = (target_min + target_max) / 2.0
         direction = target - origin
-        visible = np.ones(self.count, dtype=np.bool_)
+        visible: NDArray[np.bool_] = np.ones(self.count, dtype=np.bool_)
         for object_id in self._ids:
             if object_id in {target_id, viewer_id}:
                 continue
             minimum, maximum = self._branch_bounds(object_id)
-            low = np.zeros(self.count, dtype=np.float64)
-            high = np.ones(self.count, dtype=np.float64)
-            valid = np.ones(self.count, dtype=np.bool_)
+            low: NDArray[np.float64] = np.zeros(self.count, dtype=np.float64)
+            high: NDArray[np.float64] = np.ones(self.count, dtype=np.float64)
+            valid: NDArray[np.bool_] = np.ones(self.count, dtype=np.bool_)
             for axis in range(3):
                 parallel = np.abs(direction[:, axis]) <= 1e-12
                 valid &= ~parallel | (
@@ -485,7 +485,7 @@ class BranchBatch:
         ] + delta
 
     def _all_deltas(self) -> FloatArray:
-        result = np.zeros((self.count, len(self._ids), 3), dtype=np.float64)
+        result: FloatArray = np.zeros((self.count, len(self._ids), 3), dtype=np.float64)
         for object_id, delta in self._deltas.items():
             result[:, self._index[object_id], :] = delta
         return result

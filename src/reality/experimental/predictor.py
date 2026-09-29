@@ -49,7 +49,7 @@ class CandidatePrioritizer:
     def prioritize(self, features: NDArray[np.floating[Any]]) -> NDArray[np.int64]:
         """Return descending predicted-score indices with a stable index tie-breaker."""
         scores = self.predict(features)
-        indices = np.arange(scores.size, dtype=np.int64)
+        indices: NDArray[np.int64] = np.arange(scores.size, dtype=np.int64)
         return cast(NDArray[np.int64], np.asarray(np.lexsort((indices, -scores)), dtype=np.int64))
 
 

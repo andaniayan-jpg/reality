@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "reality"
-version = "0.2.0"
+version = "0.2.1"
 description = "A backend-neutral Python toolkit for programmable physical 3D and CAD worlds."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -21,7 +21,7 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Typing :: Typed",
 ]
-dependencies = ["numpy>=1.26", "trimesh>=4.0"]
+dependencies = ["networkx>=3.0", "numpy>=1.26", "trimesh>=4.0"]
 
 [project.scripts]
 reality = "reality.__main__:main"

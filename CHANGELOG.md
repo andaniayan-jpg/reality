@@ -39,3 +39,8 @@ its first public release.
 
 Public APIs documented in `API_DESIGN.md` are additive within the 0.2 series. Geometry and
 visibility semantics remain explicit: AABB predicates never silently become mesh-exact.
+
+## 0.2.1 — 2026-09-30
+
+- Declared Trimesh's required `networkx` graph dependency so mesh merge/split and related
+  geometry operations work immediately after a normal `pip install reality`.

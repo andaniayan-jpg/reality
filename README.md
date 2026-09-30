@@ -47,6 +47,24 @@ CAD edits use CadQuery/OpenCascade without flattening solids to meshes; mesh
 edits use Trimesh. See [editing documentation](docs/editing.md) for supported
 operations, selection, transactions, and hosted edit jobs.
 
+## Agent and MCP integration
+
+`RealityAgent` provides typed, provider-neutral plan → validate → preview →
+execute orchestration over real Reality models. It never accepts LLM-invented
+measurements as geometry evidence, and rejected edits roll back.
+
+```python
+agent = reality.RealityAgent(reality.open("fixture.glb"))
+plan = agent.plan("move block x=200 mm")
+preview = agent.preview(plan)
+result = agent.execute(plan)
+```
+
+The MCP adapter in `apps/mcp` calls Reality Cloud rather than duplicating
+geometry. It supports tenant-scoped inspection, measurement, topology,
+preview/export, versioned edit plans, confirmation-gated apply, and undo. See
+[agent documentation](docs/agent.md) and [MCP documentation](docs/mcp.md).
+
 ## 60-second start
 
 ```bash
@@ -133,6 +151,10 @@ Every query returns a `PredicateResult`, so callers can inspect `value`, `measur
   deltas, constraints, evidence, and selected future materialization
 - Optional Warp CUDA batch transforms, collision, distance, and centre-ray AABB
   visibility, always checked against NumPy CPU oracles on CUDA-capable test hosts
+- `RealityAgent` typed inspect/measure/edit/create-box orchestration with
+  provider-neutral intent selection and transactional rollback
+- MCP-shaped, tenant-scoped adapter over Reality Cloud; it delegates all
+  geometry authority to the `reality` package through the existing API
 - Dimensioned agents with deterministic CPU occupancy grids, A* paths,
   reachability, passage checks, clearance evidence, and SVG debug export
 

@@ -6,6 +6,7 @@ __pycache__/
 .venv/
 .release-venv/
 .fresh-release-venv/
+.v2-release-venv/
 .fresh-release-*.out
 .fresh-release-*.err
 build/

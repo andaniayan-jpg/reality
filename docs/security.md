@@ -23,4 +23,19 @@ The API enforces a byte quota, request upload limit, extension allow-list, conte
 
 Source objects live behind an `ObjectStorage` protocol. Local disk is for development; S3-compatible storage is available through environment configuration. Database rows expose stable IDs, never storage paths. Deletion removes the source object and cascades derived job records.
 
+## Agent and MCP boundaries
+
+The local agent records user-supplied numeric edit values and delegates all
+measurement/validation to Reality. An optional provider is limited to intent
+and part-reference assistance; it must not be treated as a geometry authority.
+The MCP adapter forwards the authenticated caller's key to Reality Cloud,
+preserving scopes, request logs, rate limits, and tenant checks. It requires an
+explicit confirmation flag before queued edits or version undo; it never stores
+or broadens a tenant credential.
+
+Experimental learned candidate prioritization remains isolated behind
+`reality[learn]` (also available as `reality[ai]`). It is not installed by
+default, never replaces exact Reality validation, and must not train on customer
+uploads without an explicit, separately recorded opt-in.
+
 Production deployers should run workers in separate containers, use PostgreSQL, terminate TLS at a trusted proxy, constrain CORS to known dashboard origins, apply database migrations, and set object-store lifecycle rules. A separate worker process is also the correct boundary for hard CAD parser timeouts.

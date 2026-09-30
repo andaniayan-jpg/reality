@@ -98,6 +98,12 @@ const model = await reality.upload("engine.step");
 console.log(await model.summary());
 ```
 
-## Future MCP boundary
+## MCP adapter and versioned edits
 
-`/mcp` is reserved for a future authenticated MCP server. It will be an adapter over this API, not a second geometry implementation. Proposed tools are `read_3d_model`, `inspect_parts`, `measure_geometry`, `edit_model`, and `export_model`. The MCP transport and any ChatGPT integration are intentionally not enabled yet.
+The transport-neutral MCP adapter is in `apps/mcp`; see [MCP documentation](mcp.md).
+It invokes these endpoints with the caller's tenant-scoped API key and contains
+no geometry implementation. `POST /v1/models/{id}/topology` exposes source
+topology where available. `GET /v1/models/{id}/versions` lists immutable model
+lineage, and `POST /v1/models/{id}/undo` returns the prior version ID without
+deleting the current model. MCP requires explicit confirmation before calling
+the source-changing edit or undo endpoints.

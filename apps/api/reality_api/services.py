@@ -94,6 +94,8 @@ def save_upload(
     content_type: str,
     chunks: list[bytes],
     idempotency_key: str | None,
+    *,
+    parent_file_id: str | None = None,
 ) -> FileRecord:
     if idempotency_key:
         existing = session.scalar(
@@ -115,6 +117,7 @@ def save_upload(
     safe_name = Path(filename).name
     record = FileRecord(
         owner_id=owner.id,
+        parent_file_id=parent_file_id,
         # Keep the extension in the storage key: Reality selects a parser based
         # on extension as well as content validation, including after S3 download.
         storage_key=f"tenants/{owner.id}/objects/{digest[:2]}/{digest}.{suffix}",
@@ -265,6 +268,7 @@ def process_edit_job(session: Session, storage: ObjectStorage, settings: Setting
             "application/octet-stream",
             [payload],
             None,
+            parent_file_id=record.id,
         )
         edited_file.status = "ready"
         edited_file.summary_json = json.dumps(model_summary(result.model), default=str)

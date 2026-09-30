@@ -1,0 +1,19 @@
+{
+  "status": "PASS",
+  "command": [
+    "C:\\Users\\LENOVO\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+    "-m",
+    "pytest",
+    "tests/test_agent.py",
+    "-q"
+  ],
+  "returncode": 0,
+  "stdout": "...                                                                      [100%]\n3 passed in 0.26s\n",
+  "stderr": "",
+  "evidence": [
+    "Tests execute source-backed measurements, unit conversion, preview, and commit.",
+    "Tests reject unknown names and invalid units before mutation.",
+    "Tests assert the source model remains unchanged after preview/rejection.",
+    "Numeric edit evidence is marked user_request; providers have no geometry authority."
+  ]
+}

@@ -45,6 +45,7 @@ from .schemas import (
     PartReference,
     RequestHistory,
     StructuredResult,
+    TopologyRequest,
     UsageResponse,
 )
 from .security import (
@@ -670,6 +671,50 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         session: Session = Depends(session_dependency),
     ) -> list[dict[str, Any]]:
         return [result(item) for item in query_model(session, principal, model_id).intersections()]
+
+    @app.post("/v1/models/{model_id}/topology", responses=ERROR_RESPONSES, tags=["models"])
+    def topology(
+        model_id: str,
+        payload: TopologyRequest,
+        principal: Principal = Depends(require_scope("models:read")),
+        session: Session = Depends(session_dependency),
+    ) -> dict[str, Any]:
+        return dict(query_model(session, principal, model_id).topology(payload.part))
+
+    @app.get(
+        "/v1/models/{model_id}/versions",
+        response_model=list[FileResponse],
+        responses=ERROR_RESPONSES,
+        tags=["editing"],
+    )
+    def versions(
+        model_id: str,
+        principal: Principal = Depends(require_scope("models:read")),
+        session: Session = Depends(session_dependency),
+    ) -> list[FileResponse]:
+        current = owned_file(session, principal, model_id)
+        history = [current]
+        while current.parent_file_id is not None:
+            current = owned_file(session, principal, current.parent_file_id)
+            history.append(current)
+        return [FileResponse(**file_view(record)) for record in history]
+
+    @app.post(
+        "/v1/models/{model_id}/undo",
+        response_model=FileResponse,
+        responses=ERROR_RESPONSES,
+        tags=["editing"],
+    )
+    def undo_edit(
+        model_id: str,
+        principal: Principal = Depends(require_scope("models:read")),
+        session: Session = Depends(session_dependency),
+    ) -> FileResponse:
+        current = owned_file(session, principal, model_id)
+        if current.parent_file_id is None:
+            raise HTTPException(409, "model has no prior immutable version to undo to")
+        previous = owned_file(session, principal, current.parent_file_id)
+        return FileResponse(**file_view(previous))
 
     @app.post(
         "/v1/models/{model_id}/convert",

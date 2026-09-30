@@ -13,7 +13,10 @@ Copy `.env.example` to `.env`, set a strong `REALITY_API_SECRET` and `POSTGRES_P
 docker compose up --build
 ```
 
-The API is at `http://localhost:8000`; the dashboard is at `http://localhost:3000`. Run the migration in `apps/api/migrations/001_initial.sql` before the first production rollout. Local development uses SQLite through exactly the same SQLAlchemy repository interface.
+The API is at `http://localhost:8000`; the dashboard is at `http://localhost:3000`. Run
+`apps/api/migrations/001_initial.sql` and `002_model_versions.sql` before the first
+production rollout. Local development uses SQLite through the same SQLAlchemy repository
+interface.
 
 ## Scale-out model
 

@@ -13,6 +13,10 @@ its first public release.
 - Documented the FastAPI-hosted Reality Cloud service, storage/authentication boundaries, and
   official Python and server-side JavaScript clients.
 - Added reproducible CAD, editing, navigation, articulation, and CPU-physics audits.
+- Added provider-neutral `RealityAgent` orchestration with typed inspection,
+  measurement, creation, transactional editing, preview, and rollback evidence.
+- Added an API-backed MCP adapter, confirmation-gated versioned edit/undo tools,
+  topology endpoint, and tenant-isolation integration coverage.
 
 ### Known v0.2 limitations
 

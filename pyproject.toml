@@ -31,6 +31,9 @@ dev = ["build>=1.2", "mypy==1.17.1", "pytest>=8.0", "ruff==0.12.10", "twine>=6.0
 physics = ["mujoco>=3.2"]
 gpu = ["warp-lang>=1.9"]
 learn = ["scikit-learn>=1.4"]
+ai = ["scikit-learn>=1.4"]
+agent = []
+mcp = ["httpx>=0.27,<0.29", "mcp>=1.0,<2"]
 cad = ["cadquery>=2.5"]
 api = [
   "boto3>=1.34",
@@ -52,7 +55,7 @@ Issues = "https://github.com/andaniayan-jpg/reality/issues"
 packages = ["src/reality"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "apps/api/tests"]
+testpaths = ["tests", "apps/api/tests", "apps/mcp/tests"]
 addopts = ["-ra"]
 
 [tool.ruff]

@@ -125,3 +125,7 @@ class RequestHistory(APIModel):
     path: str
     status_code: int
     created_at: datetime
+
+
+class TopologyRequest(APIModel):
+    part: str | None = None

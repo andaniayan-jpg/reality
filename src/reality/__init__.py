@@ -5,6 +5,14 @@
 __version__ = "0.2.0"
 
 from ._accelerators import AccelerationUnavailableError, WarpStatus, warp_status
+from ._agent import (
+    AgentAction,
+    AgentExecution,
+    AgentPlan,
+    AgentPlanError,
+    AgentProvider,
+    RealityAgent,
+)
 from ._articulation import (
     ArticulatedObject,
     Articulation,
@@ -81,6 +89,11 @@ __all__ = [
     "__version__",
     "AmbiguousObjectError",
     "AccelerationUnavailableError",
+    "AgentAction",
+    "AgentExecution",
+    "AgentPlan",
+    "AgentPlanError",
+    "AgentProvider",
     "Agent",
     "ArticulatedObject",
     "Articulation",
@@ -124,6 +137,7 @@ __all__ = [
     "PassageResult",
     "PathResult",
     "RealityGraph",
+    "RealityAgent",
     "RealityModel",
     "ReachabilityResult",
     "RankedFutures",

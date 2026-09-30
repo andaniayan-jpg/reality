@@ -1,0 +1,40 @@
+{
+  "status": "PASS",
+  "command": [
+    "C:\\Users\\LENOVO\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+    "-m",
+    "pytest",
+    "tests/test_file_models.py",
+    "tests/test_editing.py",
+    "tests/test_agent.py",
+    "apps/api/tests/test_integration.py",
+    "apps/mcp/tests/test_mcp_integration.py",
+    "-q"
+  ],
+  "returncode": 0,
+  "stdout": "......................                                                   [100%]\n============================== warnings summary ===============================\n..\\..\\..\\..\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\site-packages\\fastapi\\testclient.py:1\n  C:\\Users\\LENOVO\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n22 passed, 1 warning in 14.13s\n",
+  "stderr": "",
+  "demo_command": [
+    "C:\\Users\\LENOVO\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+    "examples/edit_model.py"
+  ],
+  "demo_returncode": 0,
+  "demo_stdout": "{\n  \"valid\": true,\n  \"history\": [\n    \"hole\",\n    \"offset\"\n  ],\n  \"output_exists\": true,\n  \"volume\": 2150.25431340639\n}\n",
+  "demo_stderr": "",
+  "capabilities": {
+    "cad": "PASS",
+    "api": "PASS",
+    "editing": "PASS",
+    "agent": "PASS",
+    "mcp": "PASS",
+    "security": "PASS",
+    "tests": "PASS",
+    "wheel_install": "PASS",
+    "demos": "PASS"
+  },
+  "known_limitations": [
+    "This audit exercises local API integration; it does not claim a deployed PostgreSQL/S3 service.",
+    "AABB-labelled queries remain approximations where documented; they are not exact mesh visibility/collision proofs.",
+    "The MCP adapter is transport-neutral and does not bundle a ChatGPT plugin."
+  ]
+}

@@ -72,6 +72,9 @@ class FileRecord(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     owner_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), index=True)
+    # Derived models retain their source instead of replacing it.  This enables
+    # tenant-safe version history and an explicit immutable undo target.
+    parent_file_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     storage_key: Mapped[str] = mapped_column(String(512), unique=True)
     filename: Mapped[str] = mapped_column(String(512))
     content_type: Mapped[str] = mapped_column(String(128))

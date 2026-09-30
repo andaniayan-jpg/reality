@@ -6,12 +6,6 @@ on:
     branches: [main]
     tags: ["v*"]
   workflow_dispatch:
-    inputs:
-      publish:
-        description: Publish the current package version to PyPI
-        required: true
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -29,7 +23,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install -e ".[dev,physics]"
+      - run: python -m pip install -e ".[dev,physics,api]"
       - run: ruff format --check .
       - run: ruff check .
       # Run the strict static check once on the oldest supported interpreter.
@@ -57,22 +51,3 @@ jobs:
       - run: python -m pip install -e ".[dev,gpu]"
       - run: python -m pytest tests/test_gpu.py -q
       - run: python tools/futures_audit.py --full --output FUTURES_AUDIT.md
-
-  publish:
-    name: Publish to PyPI
-    if: github.event_name == 'workflow_dispatch' && inputs.publish || startsWith(github.ref, 'refs/tags/v')
-    needs: test
-    runs-on: ubuntu-latest
-    environment: pypi
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: python -m pip install --upgrade build
-      - run: python -m build
-      - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1

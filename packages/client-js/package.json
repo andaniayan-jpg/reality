@@ -1,0 +1,9 @@
+{
+  "name": "@reality/cloud",
+  "version": "0.2.0",
+  "description": "Official server-side JavaScript client for Reality Cloud.",
+  "type": "module",
+  "exports": "./src/index.js",
+  "engines": {"node": ">=18"},
+  "license": "Apache-2.0"
+}

@@ -84,6 +84,16 @@ def test_push_causes_motion_and_stronger_push_moves_farther() -> None:
     )
 
 
+def test_drop_makes_an_object_dynamic_and_observes_a_fall() -> None:
+    world = World([_box("Ball", (-0.1, -0.1, -0.1), (0.1, 0.1, 0.1))])
+
+    result = world.drop("Ball", height=1.0, seconds=0.5)
+
+    assert world.object("Ball").dynamic
+    assert result.body("Ball").fell
+    assert result.body("Ball").final_transform.position[2] < 1.0
+
+
 def test_contacts_and_static_stability_are_structured() -> None:
     world = World(
         [
@@ -98,6 +108,25 @@ def test_contacts_and_static_stability_are_structured() -> None:
     assert any(contact.object_b_id == world.object("Table").id for contact in contacts)
     assert stability.value
     assert stability.support_objects == (world.object("Table"),)
+
+
+def test_static_stability_reports_an_unsupported_center_of_mass() -> None:
+    world = World(
+        [
+            _box("Table", (-1.0, -1.0, 0.0), (1.0, 1.0, 1.0)),
+            _box(
+                "Vase",
+                (-0.1, -0.1, 0.0),
+                (0.1, 0.1, 0.4),
+                position=(1.2, 0.0, 1.0),
+            ),
+        ]
+    )
+
+    stability = world.stable("Vase")
+
+    assert not stability.stable
+    assert "no supporting surface" in stability.reason
 
 
 def test_independent_branch_simulations_do_not_mutate_base() -> None:

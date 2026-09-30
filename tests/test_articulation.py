@@ -1,7 +1,11 @@
 from __future__ import annotations
 
-import pytest
+from pathlib import Path
 
+import pytest
+import trimesh
+
+import reality
 from reality import Bounds, RelationshipType, Transform, World, WorldObject
 
 
@@ -37,6 +41,10 @@ def test_partially_blocked_door_reports_blocker_and_graph_relationship() -> None
     assert any(
         relationship.type is RelationshipType.BLOCKS_MOTION_OF
         for relationship in world.relationships("Plant")
+    )
+    assert any(
+        relationship.type is RelationshipType.CONSTRAINED_BY
+        for relationship in world.relationships("Door")
     )
 
 
@@ -117,6 +125,42 @@ def test_articulation_relationship_survives_a_transform_refresh() -> None:
         relationship.type is RelationshipType.ARTICULATED_WITH
         for relationship in world.relationships("Door")
     )
+
+
+def test_load_applies_explicit_articulation_metadata(tmp_path: Path) -> None:
+    source = tmp_path / "door.glb"
+    trimesh.Scene({"Door": trimesh.creation.box(extents=(1.0, 0.1, 2.0))}).export(source)
+    metadata = {
+        "units": "m",
+        "objects": {
+            "Door": {
+                "articulation": {
+                    "joint": "revolute",
+                    "axis": [0, 0, 1],
+                    "pivot": [0, 0, 0],
+                    "limits": [0, 110],
+                }
+            }
+        },
+    }
+
+    world = reality.load(source, metadata=metadata)
+
+    assert world.can_open("Door", degrees=90).possible
+    assert world.units == "m"
+
+
+def test_contact_at_motion_limit_is_not_reported_as_collision_free() -> None:
+    drawer = WorldObject("Drawer", Bounds((0.0, 0.0, 0.0), (1.0, 0.5, 0.3)))
+    pipe = WorldObject("Pipe", Bounds((1.5, 0.0, 0.0), (1.7, 0.5, 0.3)))
+    world = World([drawer, pipe])
+    handle = world.articulate("Drawer", joint="prismatic", axis=(1, 0, 0), limits=(0.0, 0.5))
+
+    result = handle.can_extend(0.5)
+
+    assert not result.possible
+    assert result.collides_with[0].name == "Pipe"
+    assert result.maximum_collision_free < 0.5
 
 
 def _door() -> WorldObject:

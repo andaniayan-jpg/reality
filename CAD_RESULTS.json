@@ -1,0 +1,76 @@
+{
+  "status": "PARTIAL",
+  "python": "3.11.9",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "cad_backend": {
+    "available": true,
+    "name": "CadQuery/OCP"
+  },
+  "mesh_backend": "Trimesh",
+  "formats": [
+    "OBJ",
+    "STL",
+    "PLY",
+    "GLB",
+    "GLTF",
+    "STEP",
+    "STP"
+  ],
+  "tests": {
+    "command": [
+      "C:\\Users\\LENOVO\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+      "-m",
+      "pytest",
+      "tests/test_file_models.py",
+      "-q"
+    ],
+    "returncode": 0,
+    "stdout": "......                                                                   [100%]\n6 passed in 9.95s\n",
+    "stderr": ""
+  },
+  "benchmark": {
+    "command": [
+      "C:\\Users\\LENOVO\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+      "benchmarks/file_ingestion.py"
+    ],
+    "returncode": 0,
+    "stdout": "[\n  {\n    \"parts\": 1,\n    \"faces_per_part\": 20,\n    \"file_bytes\": 1152,\n    \"open_seconds\": 0.009719599999698403,\n    \"materialized_relationships\": 0\n  },\n  {\n    \"parts\": 100,\n    \"faces_per_part\": 20,\n    \"file_bytes\": 24740,\n    \"open_seconds\": 0.8567179000001488,\n    \"materialized_relationships\": 0\n  },\n  {\n    \"parts\": 1000,\n    \"faces_per_part\": 20,\n    \"file_bytes\": 244108,\n    \"open_seconds\": 2.3851948000001357,\n    \"materialized_relationships\": 0\n  },\n  {\n    \"parts\": 1,\n    \"faces_per_part\": 20480,\n    \"file_bytes\": 369364,\n    \"open_seconds\": 0.013143399999535177,\n    \"materialized_relationships\": 0\n  }\n]\n",
+    "stderr": "",
+    "results": [
+      {
+        "parts": 1,
+        "faces_per_part": 20,
+        "file_bytes": 1152,
+        "open_seconds": 0.009719599999698403,
+        "materialized_relationships": 0
+      },
+      {
+        "parts": 100,
+        "faces_per_part": 20,
+        "file_bytes": 24740,
+        "open_seconds": 0.8567179000001488,
+        "materialized_relationships": 0
+      },
+      {
+        "parts": 1000,
+        "faces_per_part": 20,
+        "file_bytes": 244108,
+        "open_seconds": 2.3851948000001357,
+        "materialized_relationships": 0
+      },
+      {
+        "parts": 1,
+        "faces_per_part": 20480,
+        "file_bytes": 369364,
+        "open_seconds": 0.013143399999535177,
+        "materialized_relationships": 0
+      }
+    ]
+  },
+  "limitations": [
+    "CAD-to-mesh export is explicitly lossy and warns about topology/metadata loss.",
+    "Model distance, clearance, containment, and intersections are deterministic AABB broad-phase results.",
+    "STEP top-level B-rep solids are retained; full XDE assembly-label import is a future adapter capability.",
+    "Hard parser cancellation requires a service worker process; parser_hook supports orchestration."
+  ]
+}

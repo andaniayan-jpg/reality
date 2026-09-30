@@ -2,6 +2,51 @@
 
 `reality` is a small, typed foundation for treating a physical 3D scene as a Python object. It loads common mesh formats today and exposes deterministic spatial queries without committing the public API to a physics or rendering engine.
 
+## Reality Cloud developer platform
+
+`apps/api` adds a FastAPI service that invokes this package for hosted model
+analysis. It includes tenant-scoped API keys, persistent job records, local/S3
+storage adapters, a responsive dashboard in `apps/web`, and official Python and
+server-side JavaScript clients. See [API docs](docs/api.md),
+[security](docs/security.md), and [deployment](docs/deployment.md).
+
+## v0.2 structural 3D/CAD reading
+
+`reality.open()` adds a model-oriented reader without changing the existing
+`reality.load()` → `World` API. OBJ, STL, PLY, GLB and glTF use Trimesh; STEP/STP
+uses the optional B-rep backend (`pip install "reality[cad]"`) and retains its
+native CAD solids/topology.
+
+```python
+import reality
+
+model = reality.open("motor.step")
+print(model.summary())
+print(model.measure("solid-1"))
+print(model.topology())
+```
+
+Source units are reported rather than guessed. CAD-to-mesh export warns about
+lost B-rep/assembly semantics; mesh-to-STEP export is refused. See
+[docs/3d-files.md](docs/3d-files.md).
+
+## Deterministic editing
+
+`RealityModel.edit()` creates a copy-on-write transaction over a real source
+mesh or CAD B-rep. The original import stays unchanged; a commit returns a new
+model, structured history, and validation evidence.
+
+```python
+model = reality.open("bracket.step")
+result = model.edit().hole("bracket", radius=3, depth=20).commit()
+assert result.validate().valid
+result.export("bracket-revised.step")
+```
+
+CAD edits use CadQuery/OpenCascade without flattening solids to meshes; mesh
+edits use Trimesh. See [editing documentation](docs/editing.md) for supported
+operations, selection, transactions, and hosted edit jobs.
+
 ## 60-second start
 
 ```bash
@@ -74,6 +119,7 @@ Every query returns a `PredicateResult`, so callers can inspect `value`, `measur
 
 - Python 3.11+ and typed public APIs
 - GLB, glTF, and OBJ loading through Trimesh
+- Structural OBJ, STL, PLY, GLB, glTF, STEP and STP reading through `reality.open()`
 - `World`, `WorldObject`, `Transform`, `Bounds`, and `PredicateResult`
 - Deterministic AABB-based `distance`, `intersects`, `above`, `below`, `inside`, and `near` queries
 - An incrementally maintainable `RealityGraph` with `near`, `above`, `below`,

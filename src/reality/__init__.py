@@ -1,5 +1,9 @@
 """Reality: a backend-neutral foundation for programmable 3D worlds."""
 
+# Kept available for runtime diagnostics and wheel-install verification.
+# The package metadata in ``pyproject.toml`` is the release source of truth.
+__version__ = "0.2.0"
+
 from ._accelerators import AccelerationUnavailableError, WarpStatus, warp_status
 from ._articulation import (
     ArticulatedObject,
@@ -18,7 +22,18 @@ from ._batch import (
     RankedFutures,
 )
 from ._branch import WorldBranch
+from ._editing import EditOperation, EditOperationError, EditResult, EditSession, EditValidation
 from ._explore import ExplorationResult, PositionSearchChange, position
+from ._file_model import (
+    CADBackendUnavailableError,
+    ModelAssembly,
+    ModelFileError,
+    ModelPart,
+    ModelResult,
+    ModelValidation,
+    RealityModel,
+    open_model,
+)
 from ._graph import GraphUpdateStats, RealityGraph, Relationship, RelationshipType
 from ._loaders import load
 from ._metadata import SceneMetadataError
@@ -63,6 +78,7 @@ from .predicates import (
 )
 
 __all__ = [
+    "__version__",
     "AmbiguousObjectError",
     "AccelerationUnavailableError",
     "Agent",
@@ -75,6 +91,7 @@ __all__ = [
     "Condition",
     "Change",
     "ChangeSet",
+    "CADBackendUnavailableError",
     "Consequence",
     "ConsequenceSet",
     "Contact",
@@ -84,9 +101,19 @@ __all__ = [
     "FutureSelection",
     "Futures",
     "ExplorationResult",
+    "EditOperation",
+    "EditOperationError",
+    "EditResult",
+    "EditSession",
+    "EditValidation",
     "Joint",
     "MoveObject",
     "MotionResult",
+    "ModelAssembly",
+    "ModelFileError",
+    "ModelPart",
+    "ModelResult",
+    "ModelValidation",
     "NavigationGrid",
     "ObjectNotFoundError",
     "PhysicalProperties",
@@ -97,6 +124,7 @@ __all__ = [
     "PassageResult",
     "PathResult",
     "RealityGraph",
+    "RealityModel",
     "ReachabilityResult",
     "RankedFutures",
     "Relationship",
@@ -122,7 +150,12 @@ __all__ = [
     "maximize",
     "minimize",
     "no_collision",
+    "open",
     "position",
     "visibility",
     "warp_status",
 ]
+
+# ``open`` is intentionally a new model-oriented API. ``load`` retains the
+# v0.1 World API for interactive spatial-world use.
+open = open_model

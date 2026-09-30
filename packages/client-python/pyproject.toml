@@ -1,0 +1,14 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "reality-cloud"
+version = "0.2.0"
+description = "Official server-side Python client for the Reality Cloud API."
+requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+dependencies = ["httpx>=0.27"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/reality_cloud"]

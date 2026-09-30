@@ -27,6 +27,14 @@ already-loaded objects; it never guesses a hinge or material from mesh names. Th
 reference backend reuses compiled topology while allocating fresh state for each run, so
 CPU simulation is faster for repeated scenarios without compromising branch isolation.
 
+Reality v2 additionally makes imported 3D/CAD models editable without changing
+the reading model or discarding representation semantics. A `RealityModel` edit
+session is a copy-on-write transaction: mesh edits remain Trimesh mesh edits,
+and CAD edits remain CadQuery/OpenCascade B-rep edits. Each operation retains
+before/after evidence and validation reports. A hosted edit plan is executed by
+the same public package in an asynchronous worker and produces an independent,
+tenant-scoped model version rather than mutating the upload.
+
 ## Foundation milestone
 
 This repository establishes the stable core: scene loading, value objects, object lookup, deterministic spatial predicates, a dependency-aware Reality Graph, persistent world branches, and consequence comparison. It provides a clean seam for future rendering, exact-geometry, semantic, and simulation backends without exposing any one of them in the public API.

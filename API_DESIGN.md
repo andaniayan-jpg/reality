@@ -10,6 +10,26 @@ object_ = world.object("Chair")
 result = world.distance("Chair", "Table")
 ```
 
+## Structural model surface (v0.2)
+
+```python
+model = reality.open("assembly.step")
+model.format, model.units, model.bounds
+model.parts, model.assemblies, model.metadata
+model.summary(), model.statistics(), model.validate()
+```
+
+`open()` is an additive file-inspection API. Each `ModelPart` exposes its source
+name/id, transform, bounds, material, mesh view, and, for CAD inputs, an opaque
+native `solid` plus faces/edges/vertices/solids/shells. Mesh formats return `None`
+for unavailable B-rep properties rather than fabricating topology.
+
+`measure`, `distance`, `clearance`, `intersections`, `contains`, `nearest`, and
+`mass_properties` return `ModelResult` with `value`, `measurement`, `units`,
+`tolerance`, `backend`, `reason`, `evidence`, and participating parts. The current
+part-to-part spatial operations are AABB broad-phase facts, explicitly labelled in
+evidence; they are not claimed as exact B-rep answers.
+
 `World.object()` accepts an object id, a unique name, or a registered `WorldObject`. Duplicate names are permitted but require lookup by id.
 
 `WorldObject` exposes `name`, `id`, `transform`, `position`, `rotation`, `scale`, `bounds`, and `mesh`. Bounds are world-space AABBs; `local_bounds` retains the geometry before applying its transform. Rotations are XYZ Euler angles in radians.

@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: reality
+      POSTGRES_USER: reality
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reality -d reality"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file: .env
+    ports: ["8000:8000"]
+    volumes: [reality-objects:/var/lib/reality/objects]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file: .env
+    command: ["python", "-m", "reality_api.worker"]
+    volumes: [reality-objects:/var/lib/reality/objects]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: apps/web
+    ports: ["3000:80"]
+    environment:
+      REALITY_API_BASE: http://localhost:8000
+
+volumes:
+  postgres-data:
+  reality-objects:

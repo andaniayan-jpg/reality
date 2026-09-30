@@ -1,0 +1,68 @@
+{
+  "generated_at": "2026-09-29T20:32:19.723045+00:00",
+  "python": "3.11.9",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "navigation": {
+    "status": "PASS",
+    "tests": {
+      "command": [
+        "C:\\Users\\LENOVO\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+        "-m",
+        "pytest",
+        "tests/test_navigation.py",
+        "-q"
+      ],
+      "returncode": 0,
+      "stdout": "..........                                                               [100%]\n10 passed in 0.10s\n",
+      "stderr": ""
+    },
+    "benchmark": {
+      "command": [
+        "C:\\Users\\LENOVO\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+        "benchmarks/navigation_scaling.py"
+      ],
+      "returncode": 0,
+      "stdout": "objects,grid_s,path_s,reachability_s,branch_update_s,consequences_s\n100,0.000098,0.000509,0.000403,0.009838,0.005554\n1000,0.000509,0.000904,0.000838,0.044987,0.056627\n5000,0.002426,0.002767,0.002710,0.239763,0.403814\n",
+      "stderr": ""
+    },
+    "assumptions": [
+      "Navigation is deterministic 2D 8-connected A* over a query-local XY occupancy grid.",
+      "World-space AABBs are inflated by agent radius; Z is used for obstacle height filtering.",
+      "Navigation grids are cached lazily and invalidated after world changes."
+    ]
+  },
+  "articulation": {
+    "status": "PASS",
+    "tests": {
+      "command": [
+        "C:\\Users\\LENOVO\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+        "-m",
+        "pytest",
+        "tests/test_articulation.py",
+        "-q"
+      ],
+      "returncode": 0,
+      "stdout": "...........                                                              [100%]\n11 passed in 0.13s\n",
+      "stderr": ""
+    },
+    "benchmark": {
+      "command": [
+        "C:\\Users\\LENOVO\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+        "benchmarks/articulation.py"
+      ],
+      "returncode": 0,
+      "stdout": "{'objects': 1001, 'seconds': 0.08495509999920614, 'resolution_degrees': 1.0}\n",
+      "stderr": ""
+    },
+    "assumptions": [
+      "Revolute and prismatic joints are explicit metadata, never inferred from arbitrary geometry.",
+      "Motion checks sample swept world AABBs at 1 degree or 0.01 m by default.",
+      "The first detected collision boundary is refined to 0.01 degree or 0.0001 m."
+    ]
+  },
+  "limitations": [
+    "Navigation has no terrain slope evaluation or global spatial index.",
+    "AABB navigation and swept AABB articulation are conservative approximations, not mesh-exact collision.",
+    "Articulation supports explicit revolute/prismatic constraints only; no automatic hinge inference or simulated joints."
+  ]
+}

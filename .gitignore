@@ -4,6 +4,10 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .venv/
+.release-venv/
+.fresh-release-venv/
+.fresh-release-*.out
+.fresh-release-*.err
 build/
 dist/
 *.egg-info/

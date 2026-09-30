@@ -12,9 +12,55 @@ public API: reality.load, World, WorldObject, Transform, Bounds, PredicateResult
                   Trimesh loader adapter (today)
 ```
 
-`_models.py` contains immutable data/value objects. `World` owns lookup indexes and evaluates spatial predicates using the world-space axis-aligned bounds of its objects. `_loaders.py` is the only module that imports Trimesh; it turns a Trimesh scene graph into `WorldObject` instances while retaining the source mesh as an opaque reference.
+## Structural file layer (v0.2)
+
+`reality.open()` is additive to `reality.load()`. `_file_model.py` owns a
+backend-neutral `RealityModel` vocabulary: immutable parts, assemblies, bounds,
+metadata, structural measurements, and typed inspection results. Mesh source data
+remains Trimesh-owned. STEP/STP source data remains CadQuery/OCP-owned B-rep data;
+the public `solid`, faces, edges, vertices, solids and shells are backend references,
+never a mesh conversion presented as CAD truth.
+
+Every structural model also owns a `World` mirror for the existing incremental
+`RealityGraph`. The mirror holds the same part ids and world-space bounds but no copy
+of source mesh/B-rep geometry. Eager graph materialization is bounded to 250 parts;
+larger imports retain the graph and its dependency indexes lazily to avoid a hidden
+quadratic all-pairs import cost. Assembly membership/name provenance remains in
+`RealityModel.assemblies` until a future graph entity model can represent non-geometry
+assembly nodes directly.
+
+`_file_model.py` checks a supported extension, format magic/content and a caller-set
+size limit before handing bytes to a parser. Its parser hook supports service worker
+orchestration; hard cancellation belongs in a worker process. glTF external URI paths
+are constrained to local, non-traversing resources. Archive formats are currently not
+accepted, so no archive is unpacked.
+
+`_models.py` contains immutable data/value objects. `World` owns lookup indexes and evaluates spatial predicates using the world-space axis-aligned bounds of its objects. `_loaders.py` preserves the v0.1 Trimesh-to-`WorldObject` loader; `_file_model.py` uses Trimesh for the v0.2 mesh adapters while retaining the source mesh as an opaque reference.
 
 This split means a future USD, Omniverse, renderer, or physics adapter can produce the same core objects without changing application code. Exact mesh queries should arrive as explicitly named capabilities rather than silently changing the existing AABB semantics.
+
+## Transactional editing
+
+`_editing.py` is an additive editor over `RealityModel`, not a second model
+format. `model.edit()` starts with tuples of the existing immutable `ModelPart`
+and `ModelAssembly` values; an operation creates replacement values only for
+its targets. Opaque Trimesh meshes and CadQuery/OCP solids stay backend-owned,
+and unchanged references are shared. `undo` and `redo` retain lightweight part
+tuple states, while `commit` returns a new immutable model plus a complete,
+typed `EditOperation` history.
+
+CAD operations delegate to B-rep CadQuery/OCP functions and never route through
+a triangle mesh. Mesh operations delegate to Trimesh. The editor rejects an
+operation whose required representation is absent, rather than fabricating CAD
+topology from mesh data or mesh facts from a B-rep result. Validation reports
+OpenCascade validity, mesh winding/watertightness, assembly references, and
+explicit backend-dependent warnings. It does not claim a full CAD-kernel
+self-intersection proof.
+
+The hosted edit API persists only an operation plan in a `Job`. An independent
+worker materializes the tenant-owned source, executes `model.edit()`, exports a
+new version, and stores a distinct file record. The client polls a job and
+receives a result model ID; source files and previews remain immutable.
 
 The Z axis is vertical for `above` and `below`. The default coordinate unit is metres (`m`), configurable when constructing a `World`.
 

@@ -1,0 +1,48 @@
+{
+  "status": "PASS",
+  "generated_at": "2026-09-29T20:36:52.773848+00:00",
+  "python": "3.11.9",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "backend": {
+    "name": "mujoco-cpu",
+    "available": true,
+    "version": "3.14.0"
+  },
+  "tests": {
+    "command": [
+      "C:\\Users\\LENOVO\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+      "-m",
+      "pytest",
+      "tests/test_physics.py",
+      "-q"
+    ],
+    "returncode": 0,
+    "stdout": ".............                                                            [100%]\n13 passed in 0.24s\n",
+    "stderr": ""
+  },
+  "benchmark": {
+    "command": [
+      "C:\\Users\\LENOVO\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+      "benchmarks/physics_cpu.py"
+    ],
+    "returncode": 0,
+    "stdout": "{'platform': 'Windows-10-10.0.26200-SP0', 'python': '3.11.9', 'backend': 'MuJoCo 3.14.0', 'results': [{'objects': 100, 'steps': 12, 'stepping_performed': True, 'cold_simulation_seconds': 0.028683900000032736, 'warm_reset_seconds': 0.008675600000060513, 'cold_model_setup_seconds': 0.00659540000015113, 'warm_model_setup_seconds': 7.080000068526715e-05, 'warm_model_reused': True, 'stepping_seconds': 0.0003352999992785044, 'branch_simulation_seconds': 0.02512889999889012, 'contacts': 0}, {'objects': 1000, 'steps': 0, 'stepping_performed': False, 'cold_simulation_seconds': 0.2695973000008962, 'warm_reset_seconds': 0.07974990000002435, 'cold_model_setup_seconds': 0.19037419999949634, 'warm_model_setup_seconds': 0.0006176000006234972, 'warm_model_reused': True, 'stepping_seconds': 1.8999999156221747e-06, 'branch_simulation_seconds': 0.2728425999994215, 'contacts': 0}], 'note': 'The 1,000-body row measures scene/backend initialization only. A five-step 1,000-body run exceeded 150 seconds on this host.'}\n",
+    "stderr": ""
+  },
+  "evidence": [
+    "The public API delegates to the isolated PhysicsBackend protocol implementation.",
+    "Tests cover gravity, ground contact, pushes, drop, stability, branch isolation, and simulation-observed consequences.",
+    "The benchmark measures 100 dynamic bodies with fixed stepping and 1,000-body backend initialization."
+  ],
+  "assumptions": [
+    "MuJoCo runs deterministic fixed-step Euler integration in the CPU reference backend.",
+    "Current colliders are oriented boxes derived from local bounds and a z=0 plane is included.",
+    "Compiled topology is cached per world backend, while every run creates fresh MuJoCo state."
+  ],
+  "limitations": [
+    "Only box collision shapes are currently mapped to MuJoCo.",
+    "Simulation joints, mesh colliders, and GPU physics are not implemented.",
+    "MuJoCo contact compliance is not a direct mapping of Reality restitution.",
+    "The 1,000-body benchmark records initialization only because stepped simulation exceeded the host budget."
+  ]
+}

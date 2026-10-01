@@ -62,6 +62,7 @@ from ._physics import (
     StabilityResult,
     UnsupportedPhysicsOperationError,
 )
+from ._provenance import ProvenanceEntry, WorldLedger, WorldProvenance, provenance_for
 from ._state import (
     Change,
     ChangeSet,
@@ -163,6 +164,7 @@ __all__ = [
     "ObjectNotFoundError",
     "PhysicalProperties",
     "PositionSearchChange",
+    "ProvenanceEntry",
     "PhysicsBackendUnavailableError",
     "PredicateResult",
     "PrismaticJoint",
@@ -185,6 +187,8 @@ __all__ = [
     "StabilityResult",
     "Transform",
     "World",
+    "WorldLedger",
+    "WorldProvenance",
     "WorldBranch",
     "WorldObject",
     "WorldSnapshot",
@@ -202,6 +206,7 @@ __all__ = [
     "no_collision",
     "open",
     "position",
+    "provenance_for",
     "visibility",
     "warp_status",
 ]

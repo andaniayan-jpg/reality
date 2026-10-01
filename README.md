@@ -80,6 +80,10 @@ joint/actuator/sensor declarations, and runs isolated control-range-validated
 local rollouts. It cannot command hardware. Run
 `python examples/mujoco_rollout.py` after installing `reality[physics]`.
 
+The first v4 foundation is `WorldLedger`: an immutable local provenance ledger
+for `WorldSnapshot` state and branch transitions. It records supplied source
+digests and coordinate frames but never silently infers either.
+
 ## 60-second start
 
 ```bash

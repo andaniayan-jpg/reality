@@ -21,15 +21,23 @@ verified in this repository and on the local machine.
   `ctrlrange` values, runs an isolated simulation, and returns body states and
   sensor readings. Its evidence explicitly records
   `hardware_commanded: false` and `source_modified: false`.
+- `RealityBridge` provides a strict, local JSON Lines boundary which delegates
+  its named import/export, spatial-query, inspection, and bounded-rollout
+  operations to the existing Reality integrations. Its tests verify manifest
+  operations, root-path confinement, malformed JSON handling, and an actual
+  MuJoCo inspection. It does not execute host code or expose network/hardware
+  access.
 
 ## Verification evidence
 
-On 2026-10-01, `python -m pytest -q --junitxml=outputs/v3-pytest.xml`
-produced 119 tests: 114 passed, 0 failures, 0 errors, and 5 expected CUDA skips
-in 16.690 seconds. Ruff formatting and linting passed; strict mypy passed for
-24 Reality source modules. `python examples/mujoco_rollout.py` produced a
-nonzero real MuJoCo joint-position sensor sample after a validated local motor
-control.
+On 2026-10-01, the core suite (`python -m pytest tests -q`) produced **117
+passed, 5 expected CUDA skips**, and no failures in 13.41 seconds. The hosted
+API integration suite produced **6 passed**; the MCP integration suite produced
+**2 passed** when supplied its documented API/MCP package paths. Together these
+exercise 125 passing tests plus the 5 expected CUDA skips. Ruff formatting and
+linting passed; strict mypy passed for 28 Reality source modules.
+`python examples/mujoco_rollout.py` produced a nonzero real MuJoCo
+joint-position sensor sample after a validated local motor control.
 
 ## Deliberate limitations
 

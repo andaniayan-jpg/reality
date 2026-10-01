@@ -30,6 +30,7 @@ from ._batch import (
     RankedFutures,
 )
 from ._branch import WorldBranch
+from ._bridge import BridgeRequestError, RealityBridge, serve_jsonl
 from ._editing import EditOperation, EditOperationError, EditResult, EditSession, EditValidation
 from ._explore import ExplorationResult, PositionSearchChange, position
 from ._file_model import (
@@ -120,6 +121,7 @@ __all__ = [
     "ArticulatedObject",
     "Articulation",
     "Bounds",
+    "BridgeRequestError",
     "BatchEvaluation",
     "BodySimulationResult",
     "BranchBatch",
@@ -178,6 +180,7 @@ __all__ = [
     "PathResult",
     "RealityGraph",
     "RealityAgent",
+    "RealityBridge",
     "RealityModel",
     "ReachabilityResult",
     "RankedFutures",
@@ -215,6 +218,7 @@ __all__ = [
     "provenance_for",
     "visibility",
     "warp_status",
+    "serve_jsonl",
 ]
 
 # ``open`` is intentionally a new model-oriented API. ``load`` retains the

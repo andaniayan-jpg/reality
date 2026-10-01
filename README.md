@@ -82,7 +82,8 @@ local rollouts. It cannot command hardware. Run
 
 The first v4 foundation is `WorldLedger`: an immutable local provenance ledger
 for `WorldSnapshot` state and branch transitions. It records supplied source
-digests and coordinate frames but never silently infers either.
+digests and coordinate frames but never silently infers either. Run
+`python examples/world_ledger.py` for a JSON example.
 
 ## 60-second start
 

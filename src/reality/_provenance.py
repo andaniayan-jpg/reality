@@ -15,7 +15,8 @@ from datetime import UTC, datetime
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
-from ._articulation import PrismaticJoint, RevoluteJoint
+from ._articulation import Articulation, PrismaticJoint, RevoluteJoint
+from ._models import WorldObject
 from ._state import WorldSnapshot
 
 if TYPE_CHECKING:
@@ -35,6 +36,16 @@ class WorldProvenance:
     coordinate_frame: str | None
     state_digest: str
     source_digest: str | None
+
+    def __post_init__(self) -> None:
+        if self.schema != _SCHEMA:
+            raise ValueError(f"unsupported provenance schema: {self.schema!r}")
+        if not self.lineage_id:
+            raise ValueError("lineage_id must not be empty")
+        if self.revision < 0:
+            raise ValueError("revision must be non-negative")
+        if len(self.state_digest) != 64:
+            raise ValueError("state_digest must be a SHA-256 hexadecimal digest")
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -64,6 +75,8 @@ class ProvenanceEntry:
             raise ValueError("provenance event must not be empty")
         if not self.actor.strip():
             raise ValueError("provenance actor must not be empty")
+        if self.timestamp.tzinfo is None:
+            raise ValueError("provenance timestamp must be timezone-aware")
         object.__setattr__(self, "evidence", MappingProxyType(dict(self.evidence)))
 
     def to_dict(self) -> dict[str, object]:
@@ -186,6 +199,7 @@ def _canonical_state(snapshot: WorldSnapshot) -> dict[str, Any]:
             "resolution": snapshot.navigation_resolution,
             "margin": snapshot.navigation_margin,
             "backend": snapshot.compute_backend,
+            "build_graph": snapshot.build_graph,
         },
         "objects": [
             _object_state(object_) for object_ in sorted(snapshot.objects, key=lambda item: item.id)
@@ -203,12 +217,13 @@ def _canonical_state(snapshot: WorldSnapshot) -> dict[str, Any]:
             for agent in sorted(snapshot.agents, key=lambda item: item.id)
         ],
         "articulations": [
-            _articulation_state(articulation) for articulation in snapshot.articulations
+            _articulation_state(articulation)
+            for articulation in sorted(snapshot.articulations, key=lambda item: item.object_id)
         ],
     }
 
 
-def _object_state(object_: Any) -> dict[str, object]:
+def _object_state(object_: WorldObject) -> dict[str, object]:
     return {
         "id": object_.id,
         "name": object_.name,
@@ -232,7 +247,7 @@ def _object_state(object_: Any) -> dict[str, object]:
     }
 
 
-def _articulation_state(articulation: Any) -> dict[str, object]:
+def _articulation_state(articulation: Articulation) -> dict[str, object]:
     joint = articulation.joint
     state: dict[str, object] = {
         "object_id": articulation.object_id,

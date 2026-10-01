@@ -74,6 +74,11 @@ transforms, units, and rigid-body inputs. It does not claim mesh, CAD, material,
 or simulator fidelity. See [V3.md](V3.md) for real-host validation gates and
 [V4.md](V4.md) for the deliberately unimplemented platform design.
 
+With the optional `reality[physics]` dependency, `MuJoCoSceneIntegration`
+compiles real MJCF scenes and exchanges supported primitive geom bounds. It is
+not an exact mesh/CAD, joint, actuator, or sensor exporter; those omissions are
+returned as explicit warnings.
+
 ## 60-second start
 
 ```bash

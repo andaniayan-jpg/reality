@@ -8,10 +8,11 @@ module can be imported: a caller must inspect its descriptor and capabilities.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from dataclasses import dataclass
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
+from types import MappingProxyType
 from typing import Protocol, runtime_checkable
 
 from .._world import World
@@ -86,6 +87,12 @@ class IntegrationSyncResult:
     object_ids: tuple[str, ...]
     changed_object_ids: tuple[str, ...]
     reason: str
+    warnings: tuple[str, ...] = ()
+    evidence: Mapping[str, object] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "warnings", tuple(self.warnings))
+        object.__setattr__(self, "evidence", MappingProxyType(dict(self.evidence)))
 
 
 @runtime_checkable

@@ -76,8 +76,9 @@ Navigation currently scans every object to construct each query-local grid and r
 
 ## 0.3 — physical-AI integration layer (in progress)
 
-- Capability-checked integration registry and strict `reality-scene/v1`
-  interchange adapter are implemented.
+- Capability-checked integration registry, strict `reality-scene/v1`
+  interchange adapter, and validated MuJoCo MJCF primitive-geometry bridge are
+  implemented.
 - Blender, game-engine, robotics, and live simulation adapters are not yet
   claimed: each requires its native runtime and an end-to-end validation gate.
 - The complete contract and acceptance gates are in [V3.md](V3.md); the future

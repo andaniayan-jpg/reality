@@ -101,3 +101,59 @@ def test_registry_requires_explicit_capabilities_and_rejects_duplicates() -> Non
 def test_integration_descriptor_rejects_missing_identity() -> None:
     with pytest.raises(ValueError, match="name"):
         IntegrationDescriptor(name="", version="1", runtime="test", capabilities=frozenset())
+
+
+def test_mujoco_mjcf_adapter_compiles_real_source_and_preserves_supported_bounds(
+    tmp_path: Path,
+) -> None:
+    mujoco = pytest.importorskip("mujoco")
+    from reality import MuJoCoSceneIntegration
+
+    source = tmp_path / "cell.xml"
+    source.write_text(
+        """<mujoco model="cell">
+  <worldbody>
+    <geom name="floor" type="plane" size="2 2 0.1"/>
+    <body name="station" pos="1 2 0.5">
+      <geom name="fixture" type="box" size="0.5 0.25 0.1"/>
+    </body>
+    <body name="payload" pos="2 2 1">
+      <geom name="part" type="sphere" size="0.2"/>
+    </body>
+  </worldbody>
+</mujoco>""",
+        encoding="utf-8",
+    )
+
+    world, result = MuJoCoSceneIntegration().import_world(source)
+
+    assert world.units == "m"
+    assert world.object("fixture").position == pytest.approx((1.0, 2.0, 0.5))
+    assert world.object("fixture").local_bounds.extents == pytest.approx((1.0, 0.5, 0.2))
+    assert world.object("part").local_bounds.extents == pytest.approx((0.4, 0.4, 0.4))
+    assert result.evidence["mujoco_version"] == mujoco.__version__
+    assert result.evidence["imported_geom_count"] == 2
+    assert result.evidence["skipped_geom_count"] == 1
+    assert any("floor: unsupported" in warning for warning in result.warnings)
+
+
+def test_mujoco_mjcf_adapter_writes_a_file_that_mujoco_compiles(tmp_path: Path) -> None:
+    mujoco = pytest.importorskip("mujoco")
+    from reality import MuJoCoSceneIntegration
+
+    destination = tmp_path / "export.xml"
+    result = MuJoCoSceneIntegration().export_world(_world(), destination)
+    compiled = mujoco.MjModel.from_xml_path(str(destination))
+
+    assert compiled.ngeom == 2
+    assert result.evidence["compiled_geom_count"] == 2
+    assert result.evidence["representation"] == "oriented bounding boxes"
+    assert "bounding boxes" in result.warnings[0]
+
+
+def test_mujoco_mjcf_export_requires_explicit_metre_units(tmp_path: Path) -> None:
+    from reality import MuJoCoSceneIntegration
+
+    centimetre_world = World(_world().objects, units="cm")
+    with pytest.raises(ValueError, match="metres"):
+        MuJoCoSceneIntegration().export_world(centimetre_world, tmp_path / "bad.xml")

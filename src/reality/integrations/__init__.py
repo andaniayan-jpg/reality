@@ -11,6 +11,7 @@ from .base import (
     WorldIntegration,
 )
 from .manifest import SceneManifestError, SceneManifestIntegration
+from .mujoco import MuJoCoSceneIntegration
 
 __all__ = [
     "IntegrationCapability",
@@ -19,6 +20,7 @@ __all__ = [
     "IntegrationRegistry",
     "IntegrationSyncResult",
     "IntegrationUnavailableError",
+    "MuJoCoSceneIntegration",
     "SceneManifestError",
     "SceneManifestIntegration",
     "UnsupportedIntegrationCapabilityError",

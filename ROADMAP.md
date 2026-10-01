@@ -73,3 +73,12 @@ intersections remain future candidates. GPU behavior must remain an explicit cap
 with results compatible with the documented deterministic baseline.
 
 Navigation currently scans every object to construct each query-local grid and rasterizes qualifying AABBs cell by cell. Large scenes will first benefit from CPU spatial indexing, shared/tiled grid caches, and more precise invalidation. Later GPU candidates are batched obstacle projection, occupancy/voxel rasterization, clearance fields, and many simultaneous path queries. A GPU backend must preserve the CPU semantics and evidence contract.
+
+## 0.3 — physical-AI integration layer (in progress)
+
+- Capability-checked integration registry and strict `reality-scene/v1`
+  interchange adapter are implemented.
+- Blender, game-engine, robotics, and live simulation adapters are not yet
+  claimed: each requires its native runtime and an end-to-end validation gate.
+- The complete contract and acceptance gates are in [V3.md](V3.md); the future
+  shared-platform design begins in [V4.md](V4.md).

@@ -65,6 +65,15 @@ geometry. It supports tenant-scoped inspection, measurement, topology,
 preview/export, versioned edit plans, confirmation-gated apply, and undo. See
 [agent documentation](docs/agent.md) and [MCP documentation](docs/mcp.md).
 
+## v0.3 physical-AI integration foundation
+
+`reality.integrations` provides capability-checked contracts for future Blender,
+game-engine, robotics, and simulator bridges. The included `reality-scene/v1`
+adapter is a strict, portable JSON interchange for explicit world bounds,
+transforms, units, and rigid-body inputs. It does not claim mesh, CAD, material,
+or simulator fidelity. See [V3.md](V3.md) for real-host validation gates and
+[V4.md](V4.md) for the deliberately unimplemented platform design.
+
 ## 60-second start
 
 ```bash

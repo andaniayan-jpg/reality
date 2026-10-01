@@ -77,6 +77,9 @@ from ._state import (
 )
 from ._world import AmbiguousObjectError, ObjectNotFoundError, World
 from .integrations import (
+    BlenderSceneIntegration,
+    BlenderTransformChange,
+    BlenderTransformPreview,
     IntegrationCapability,
     IntegrationDescriptor,
     IntegrationError,
@@ -95,6 +98,8 @@ from .integrations import (
     SceneManifestIntegration,
     UnsupportedIntegrationCapabilityError,
     WorldIntegration,
+    register_addon,
+    unregister_addon,
 )
 from .predicates import (
     Condition,
@@ -121,6 +126,9 @@ __all__ = [
     "ArticulatedObject",
     "Articulation",
     "Bounds",
+    "BlenderSceneIntegration",
+    "BlenderTransformChange",
+    "BlenderTransformPreview",
     "BridgeRequestError",
     "BatchEvaluation",
     "BodySimulationResult",
@@ -218,7 +226,9 @@ __all__ = [
     "provenance_for",
     "visibility",
     "warp_status",
+    "register_addon",
     "serve_jsonl",
+    "unregister_addon",
 ]
 
 # ``open`` is intentionally a new model-oriented API. ``load`` retains the

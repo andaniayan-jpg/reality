@@ -11,6 +11,13 @@ from .base import (
     UnsupportedIntegrationCapabilityError,
     WorldIntegration,
 )
+from .blender import (
+    BlenderSceneIntegration,
+    BlenderTransformChange,
+    BlenderTransformPreview,
+    register_addon,
+    unregister_addon,
+)
 from .manifest import SceneManifestError, SceneManifestIntegration
 from .mujoco import (
     MuJoCoActuatorInfo,
@@ -30,6 +37,9 @@ __all__ = [
     "IntegrationStatus",
     "IntegrationSyncResult",
     "IntegrationUnavailableError",
+    "BlenderSceneIntegration",
+    "BlenderTransformChange",
+    "BlenderTransformPreview",
     "MuJoCoActuatorInfo",
     "MuJoCoBodyState",
     "MuJoCoJointInfo",
@@ -41,4 +51,6 @@ __all__ = [
     "SceneManifestIntegration",
     "UnsupportedIntegrationCapabilityError",
     "WorldIntegration",
+    "register_addon",
+    "unregister_addon",
 ]

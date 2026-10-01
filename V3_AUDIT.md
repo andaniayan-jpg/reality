@@ -30,12 +30,12 @@ verified in this repository and on the local machine.
 
 ## Verification evidence
 
-On 2026-10-01, the core suite (`python -m pytest tests -q`) produced **117
-passed, 5 expected CUDA skips**, and no failures in 13.41 seconds. The hosted
+On 2026-10-01, the core suite (`python -m pytest tests -q`) produced **119
+passed, 5 expected CUDA skips**, and no failures in 17.68 seconds. The hosted
 API integration suite produced **6 passed**; the MCP integration suite produced
 **2 passed** when supplied its documented API/MCP package paths. Together these
-exercise 125 passing tests plus the 5 expected CUDA skips. Ruff formatting and
-linting passed; strict mypy passed for 28 Reality source modules.
+exercise 127 passing tests plus the 5 expected CUDA skips. Ruff formatting and
+linting passed; strict mypy passed for 29 Reality source modules.
 `python examples/mujoco_rollout.py` produced a nonzero real MuJoCo
 joint-position sensor sample after a validated local motor control.
 
@@ -46,8 +46,12 @@ joint-position sensor sample after a validated local motor control.
   trees, joint state, actuator dynamics, or sensor semantics in a `World`.
 - The rollout is simulator-only. It is not robot hardware control or a safety
   certification.
-- No Blender installation was available on the development machine, so no
-  Blender add-on is implemented or claimed.
+- `BlenderSceneIntegration` is implemented as an optional `bpy` active-scene
+  adapter with inspection, non-mutating transform previews, confirmation, and
+  per-call rollback. No Blender installation was available on this development
+  machine, so native Blender operation has not been verified and it remains
+  experimental. It neither opens/saves `.blend` files nor claims fidelity for
+  mesh edits, modifiers, materials, animation, hierarchy, or unit conversion.
 - No Unity, Unreal, ROS 2, Isaac, Gazebo, or hardware runtime has been
   validated. They remain v3 milestones, not existing features.
 - Five existing CUDA tests were skipped because this machine has no NVIDIA CUDA

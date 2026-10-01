@@ -29,6 +29,9 @@ reality = "reality.__main__:main"
 [project.optional-dependencies]
 dev = ["build>=1.2", "mypy==1.17.1", "pytest>=8.0", "ruff==0.12.10", "twine>=6.0"]
 physics = ["mujoco>=3.2"]
+# Blender supplies ``bpy`` from its own Python runtime; no PyPI dependency is
+# declared so installing Reality never attempts to install an incompatible bpy.
+blender = []
 gpu = ["warp-lang>=1.9"]
 learn = ["scikit-learn>=1.4"]
 ai = ["scikit-learn>=1.4"]

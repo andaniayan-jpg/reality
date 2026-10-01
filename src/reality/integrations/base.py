@@ -79,6 +79,22 @@ class IntegrationDescriptor:
 
 
 @dataclass(frozen=True, slots=True)
+class IntegrationStatus:
+    """Runtime availability evidence for one explicitly registered adapter."""
+
+    descriptor: IntegrationDescriptor
+    available: bool
+    reason: str
+    runtime_version: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.reason.strip():
+            raise ValueError("integration status reason must not be empty")
+        if self.available and self.runtime_version is not None and not self.runtime_version.strip():
+            raise ValueError("runtime_version must be non-empty when supplied")
+
+
+@dataclass(frozen=True, slots=True)
 class IntegrationSyncResult:
     """Evidence returned after an adapter imports, exports, or synchronizes state."""
 
@@ -106,6 +122,8 @@ class WorldIntegration(Protocol):
 
     @property
     def descriptor(self) -> IntegrationDescriptor: ...
+
+    def status(self) -> IntegrationStatus: ...
 
     def import_world(self, source: Path) -> tuple[World, IntegrationSyncResult]: ...
 
@@ -147,5 +165,14 @@ class IntegrationRegistry:
             sorted(
                 (integration.descriptor for integration in self._integrations.values()),
                 key=lambda descriptor: descriptor.name.casefold(),
+            )
+        )
+
+    def statuses(self) -> tuple[IntegrationStatus, ...]:
+        """Probe registered runtimes without attempting an import or export."""
+        return tuple(
+            sorted(
+                (integration.status() for integration in self._integrations.values()),
+                key=lambda status: status.descriptor.name.casefold(),
             )
         )

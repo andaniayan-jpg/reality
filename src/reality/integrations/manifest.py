@@ -18,6 +18,7 @@ from .base import (
     IntegrationCapability,
     IntegrationDescriptor,
     IntegrationError,
+    IntegrationStatus,
     IntegrationSyncResult,
 )
 
@@ -50,6 +51,14 @@ class SceneManifestIntegration:
     @property
     def descriptor(self) -> IntegrationDescriptor:
         return self._descriptor
+
+    def status(self) -> IntegrationStatus:
+        return IntegrationStatus(
+            descriptor=self.descriptor,
+            available=True,
+            reason="standard-library JSON adapter is available",
+            runtime_version=None,
+        )
 
     def import_world(self, source: Path) -> tuple[World, IntegrationSyncResult]:
         """Load a local manifest with strict schema and size checks."""

@@ -9,7 +9,8 @@ verified in this repository and on the local machine.
 
 - `reality.integrations` provides an explicit, capability-checked adapter
   registry. Unregistered or unsupported integration operations fail with typed
-  errors rather than silently falling back.
+  errors rather than silently falling back. Runtime status probes report whether
+  an optional native dependency is actually available.
 - `reality-scene/v1` is a strict JSON interchange for world object IDs, AABB
   bounds, transforms, units, and explicit rigid-body properties. It does not
   claim to preserve meshes, CAD solids, materials, animation, or physics.

@@ -89,6 +89,8 @@ def test_registry_requires_explicit_capabilities_and_rejects_duplicates() -> Non
 
     assert registry.get("REALITY-SCENE") is adapter
     assert registry.descriptors() == (adapter.descriptor,)
+    assert registry.statuses()[0].available
+    assert registry.statuses()[0].reason == "standard-library JSON adapter is available"
     adapter.descriptor.require(IntegrationCapability.IMPORT_SCENE)
     with pytest.raises(UnsupportedIntegrationCapabilityError, match="physics_simulation"):
         adapter.descriptor.require(IntegrationCapability.PHYSICS_SIMULATION)
@@ -135,6 +137,17 @@ def test_mujoco_mjcf_adapter_compiles_real_source_and_preserves_supported_bounds
     assert result.evidence["imported_geom_count"] == 2
     assert result.evidence["skipped_geom_count"] == 1
     assert any("floor: unsupported" in warning for warning in result.warnings)
+
+
+def test_mujoco_status_reports_real_runtime_availability() -> None:
+    mujoco = pytest.importorskip("mujoco")
+    from reality import MuJoCoSceneIntegration
+
+    status = MuJoCoSceneIntegration().status()
+
+    assert status.available
+    assert status.runtime_version == mujoco.__version__
+    assert status.descriptor.name == "mujoco-mjcf"
 
 
 def test_mujoco_mjcf_adapter_writes_a_file_that_mujoco_compiles(tmp_path: Path) -> None:

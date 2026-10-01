@@ -25,6 +25,7 @@ from .._world import World
 from .base import (
     IntegrationCapability,
     IntegrationDescriptor,
+    IntegrationStatus,
     IntegrationSyncResult,
     IntegrationUnavailableError,
 )
@@ -133,6 +134,23 @@ class MuJoCoSceneIntegration:
     @property
     def descriptor(self) -> IntegrationDescriptor:
         return self._descriptor
+
+    def status(self) -> IntegrationStatus:
+        try:
+            mujoco = _mujoco()
+        except IntegrationUnavailableError as error:
+            return IntegrationStatus(
+                descriptor=self.descriptor,
+                available=False,
+                reason=str(error),
+                runtime_version=None,
+            )
+        return IntegrationStatus(
+            descriptor=self.descriptor,
+            available=True,
+            reason="optional MuJoCo runtime is importable",
+            runtime_version=str(mujoco.__version__),
+        )
 
     def inspect_scene(self, source: Path) -> MuJoCoSceneInfo:
         """Compile MJCF and expose declared joints, actuators, and sensors.

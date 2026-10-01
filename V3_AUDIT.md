@@ -43,6 +43,10 @@ control.
   validated. They remain v3 milestones, not existing features.
 - Five existing CUDA tests were skipped because this machine has no NVIDIA CUDA
   driver/device. This is unrelated to the MuJoCo validation.
+- A fresh wheel build of the current commits is not verified in this session.
+  `python -m build` requires an isolated Hatchling download, which was blocked
+  by unavailable package-index authorization. Existing `dist/` artifacts are
+  older builds and are not used as evidence for this v3 work.
 
 ## V4 foundation
 

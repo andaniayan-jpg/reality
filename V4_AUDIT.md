@@ -25,6 +25,9 @@
   twin service.
 - No live sensor ingestion, object storage, tenancy, cross-device conflict
   resolution, or hardware actuation is claimed.
+- A fresh distributable-wheel build is not verified in this session because the
+  isolated build environment could not download its Hatchling dependency. The
+  source-level test, lint, typing, and example checks remain verified.
 
 The runnable demonstration is `python examples/world_ledger.py`. V4 remains a
 foundation effort; its broader platform work is defined in [V4.md](V4.md).

@@ -14,6 +14,9 @@
 - Caller-supplied coordinate frames and source digests are recorded. Missing
   coordinate-frame data stays `null`; it is never inferred.
 - Ledger entries are JSON serializable and have timezone-aware timestamps.
+- `JsonlLedgerStore` persists local ledger entries in a SHA-256-linked JSONL
+  chain, verifies the chain before append, rejects unsafe lineage IDs, and
+  detects edited entry data in tests.
 
 ## Deliberate exclusions
 
@@ -23,6 +26,9 @@
 - This is a local value-object ledger, not a hosted append-only database,
   collaborative merge service, identity provider, distributed clock, or digital
   twin service.
+- The JSONL store intentionally has no cross-process writer lock, signature,
+  tenant authorization, replication, or external integrity anchor. An attacker
+  able to rewrite the complete file can recalculate its unsigned hash chain.
 - No live sensor ingestion, object storage, tenancy, cross-device conflict
   resolution, or hardware actuation is claimed.
 - A fresh distributable-wheel build is not verified in this session because the

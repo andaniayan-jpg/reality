@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
 import reality
 
 
@@ -31,7 +34,19 @@ def main() -> None:
         event="chair-moved",
         evidence={"candidate": "chair x +1m"},
     )
-    print(ledger.to_json())
+    with TemporaryDirectory(prefix="reality-ledger-") as directory:
+        store = reality.JsonlLedgerStore(Path(directory) / "ledgers")
+        verification = store.persist(ledger)
+        print(
+            ledger.to_json()
+            + "\n"
+            + str(
+                {
+                    "persisted_entries": verification.entry_count,
+                    "current_state_digest": verification.current_state_digest,
+                }
+            )
+        )
 
 
 if __name__ == "__main__":

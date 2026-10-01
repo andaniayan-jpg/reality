@@ -43,6 +43,7 @@ from ._file_model import (
     open_model,
 )
 from ._graph import GraphUpdateStats, RealityGraph, Relationship, RelationshipType
+from ._ledger_store import JsonlLedgerStore, LedgerIntegrityError, LedgerVerification
 from ._loaders import load
 from ._metadata import SceneMetadataError
 from ._models import Bounds, PhysicalProperties, PredicateResult, Transform, WorldObject
@@ -153,6 +154,9 @@ __all__ = [
     "EditSession",
     "EditValidation",
     "Joint",
+    "JsonlLedgerStore",
+    "LedgerIntegrityError",
+    "LedgerVerification",
     "MoveObject",
     "MotionResult",
     "ModelAssembly",

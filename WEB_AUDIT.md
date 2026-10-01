@@ -40,6 +40,9 @@ credentials were configured on the development machine.
   PostgreSQL smoke test does not validate the full Compose stack or deployment.
 - Publish the website/API to a real domain, configure CORS and HTTPS cookies,
   then repeat the browser flow against that deployment.
+- Pin and self-host the WebGL viewer dependency before production, and include
+  the browser smoke test in CI. The current viewer loader uses an unpinned CDN
+  URL, so local rendering success is not a supply-chain or availability proof.
 
 ## Reproduce local checks
 

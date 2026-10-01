@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, create_engine
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, create_engine, inspect
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -34,8 +34,11 @@ class Account(Base):
     __tablename__ = "accounts"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
-    email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
-    password_hash: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str | None] = mapped_column(String(320), unique=True, index=True, nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    phone_e164: Mapped[str | None] = mapped_column(
+        String(16), unique=True, index=True, nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     quota_bytes: Mapped[int] = mapped_column(Integer, default=5 * 1024**3)
     keys: Mapped[list[ApiKey]] = relationship(back_populates="owner", cascade="all, delete-orphan")
@@ -65,6 +68,15 @@ class SessionToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class PhoneStartAttempt(Base):
+    __tablename__ = "phone_start_attempts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    phone_hash: Mapped[str] = mapped_column(String(128), index=True)
+    ip_hash: Mapped[str] = mapped_column(String(128), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
 
 
 class FileRecord(Base):
@@ -140,6 +152,12 @@ class Database:
 
     def create_all(self) -> None:
         Base.metadata.create_all(self.engine)
+        columns = {column["name"] for column in inspect(self.engine).get_columns("accounts")}
+        if "phone_e164" not in columns:
+            raise RuntimeError(
+                "the account database is from an older Reality API schema; apply migration "
+                "003_phone_auth.sql before starting this version"
+            )
 
     def session(self) -> Generator[Session, None, None]:
         session = self.sessions()

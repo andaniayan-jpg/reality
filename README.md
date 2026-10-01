@@ -9,6 +9,11 @@ analysis. It includes tenant-scoped API keys, persistent job records, local/S3
 storage adapters, a responsive dashboard in `apps/web`, and official Python and
 server-side JavaScript clients. See [API docs](docs/api.md),
 [security](docs/security.md), and [deployment](docs/deployment.md).
+The dashboard can create one-time-reveal API keys, upload and inspect models,
+run geometry queries, preview GLB models, and submit edits. Mobile-number
+sign-in uses Twilio Verify and requires server-side provider credentials; email
+sign-in still works without them. Neither the site nor these v3/v4 foundations
+are claimed as a deployed public service in this repository.
 
 ## v0.2 structural 3D/CAD reading
 
@@ -65,7 +70,7 @@ geometry. It supports tenant-scoped inspection, measurement, topology,
 preview/export, versioned edit plans, confirmation-gated apply, and undo. See
 [agent documentation](docs/agent.md) and [MCP documentation](docs/mcp.md).
 
-## v0.3 physical-AI integration foundation
+## v3 physical-AI integration foundation
 
 `reality.integrations` provides capability-checked contracts for future Blender,
 game-engine, robotics, and simulator bridges. The included `reality-scene/v1`

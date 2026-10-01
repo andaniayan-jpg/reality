@@ -30,12 +30,13 @@ verified in this repository and on the local machine.
 
 ## Verification evidence
 
-On 2026-10-01, the core suite (`python -m pytest tests -q`) produced **119
+On 2026-10-02, the complete suite (`python -m pytest tests apps/api/tests
+apps/mcp/tests -q` with API/MCP package paths) produced **131 passed, 5
+expected CUDA skips**, and one Starlette deprecation warning in 35.60 seconds.
+Ruff formatting/lint and strict mypy for 29 Reality source modules passed.
+The separate core suite on 2026-10-01 produced **119
 passed, 5 expected CUDA skips**, and no failures in 17.68 seconds. The hosted
-API integration suite produced **6 passed**; the MCP integration suite produced
-**2 passed** when supplied its documented API/MCP package paths. Together these
-exercise 127 passing tests plus the 5 expected CUDA skips. Ruff formatting and
-linting passed; strict mypy passed for 29 Reality source modules.
+API suite now includes phone and model-list coverage; it has **10 passed**.
 `python examples/mujoco_rollout.py` produced a nonzero real MuJoCo
 joint-position sensor sample after a validated local motor control.
 
@@ -56,10 +57,10 @@ joint-position sensor sample after a validated local motor control.
   validated. They remain v3 milestones, not existing features.
 - Five existing CUDA tests were skipped because this machine has no NVIDIA CUDA
   driver/device. This is unrelated to the MuJoCo validation.
-- A fresh wheel build of the current commits is not verified in this session.
-  `python -m build` requires an isolated Hatchling download, which was blocked
-  by unavailable package-index authorization. Existing `dist/` artifacts are
-  older builds and are not used as evidence for this v3 work.
+- A new local `reality-0.2.1-py3-none-any.whl` and sdist built with
+  `python -m build --no-isolation` after Hatchling was installed. Twine checks
+  passed. A fresh Python 3.11 environment imported this wheel from
+  `site-packages` and inspected a generated OBJ; this is not a PyPI release.
 
 ## V4 foundation
 

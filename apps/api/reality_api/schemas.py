@@ -30,8 +30,21 @@ class Login(APIModel):
 
 class AccountResponse(APIModel):
     id: str
-    email: EmailStr
+    email: EmailStr | None
+    phone: str | None = None
     created_at: datetime
+
+
+class PhoneStart(APIModel):
+    phone: str = Field(pattern=r"^\+[1-9][0-9]{7,14}$")
+
+
+class PhoneCheck(PhoneStart):
+    code: str = Field(min_length=4, max_length=10, pattern=r"^[0-9]+$")
+
+
+class PhoneStartResponse(APIModel):
+    status: Literal["sent"]
 
 
 class KeyCreate(APIModel):

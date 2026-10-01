@@ -9,6 +9,10 @@ Reality Cloud treats uploaded 3D and CAD files as untrusted data and maintains t
 - Verification recomputes the HMAC and uses constant-time comparison.
 - Passwords use PBKDF2-HMAC-SHA256 with a unique random salt and 600,000 iterations.
 - Dashboard sessions are random, hashed in the database, seven-day, `HttpOnly`, `SameSite=Lax`, and `Secure` in production.
+- Phone sign-in uses Twilio Verify SMS. Reality never generates or stores SMS
+  codes. It stores a verified E.164 phone on the account and hashes phone/IP
+  rate-limit identifiers. Unconfigured SMS endpoints return `503`; a real
+  Twilio account, Verify service, and auth token are required for delivery.
 - `REALITY_API_SECRET` is mandatory in production. It is never committed; `.env.example` has an empty value.
 
 ## Authorization and isolation

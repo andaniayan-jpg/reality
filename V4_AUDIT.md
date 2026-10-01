@@ -17,6 +17,13 @@
 - `JsonlLedgerStore` persists local ledger entries in a SHA-256-linked JSONL
   chain, verifies the chain before append, rejects unsafe lineage IDs, and
   detects edited entry data in tests.
+- The existing Reality Cloud API now has a local browser-verified dashboard
+  with one-time-reveal developer keys, real model analysis/measurement, and
+  a real-provider SMS verification path. See [WEB_AUDIT.md](WEB_AUDIT.md).
+  Live SMS and public deployment remain unverified.
+- The API's PostgreSQL schema migrations 001–003 and real OBJ analysis were
+  validated against a disposable local PostgreSQL 16 container. This is not a
+  hosted multi-replica or object-storage deployment test.
 
 ## Deliberate exclusions
 
@@ -29,11 +36,13 @@
 - The JSONL store intentionally has no cross-process writer lock, signature,
   tenant authorization, replication, or external integrity anchor. An attacker
   able to rewrite the complete file can recalculate its unsigned hash chain.
-- No live sensor ingestion, object storage, tenancy, cross-device conflict
-  resolution, or hardware actuation is claimed.
-- A fresh distributable-wheel build is not verified in this session because the
-  isolated build environment could not download its Hatchling dependency. The
-  source-level test, lint, typing, and example checks remain verified.
+- The ledger itself has no live sensor ingestion, tenant authorization,
+  cross-device conflict resolution, or hardware actuation. The separate API
+  does support tenant-scoped model storage, but its production deployment is
+  not verified here.
+- A fresh local `0.2.1` wheel and sdist were built and passed Twine checks.
+  A clean Python 3.11 environment installed the wheel and performed a real OBJ
+  inspection. No v4 release or public deployment is claimed.
 
 The runnable demonstration is `python examples/world_ledger.py`. V4 remains a
 foundation effort; its broader platform work is defined in [V4.md](V4.md).

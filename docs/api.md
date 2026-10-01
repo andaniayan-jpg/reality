@@ -6,21 +6,34 @@ Interactive OpenAPI is available at `/docs`; the machine-readable specification 
 
 ## Authentication
 
-Create an account in the dashboard, then create a test or live key. Send it only from a server you control:
+Create an account in the dashboard, then create a test or live key. Phone
+sign-in uses a one-time SMS code delivered by a configured Twilio Verify
+service. Email/password sign-in remains available for existing accounts. The
+dashboard keeps its session in an HttpOnly cookie; the API key is shown once.
+Send that key only from a server you control:
 
 ```bash
-curl https://api.reality.dev/v1/files \
+curl http://localhost:8000/v1/files \
   -H "Authorization: Bearer $REALITY_API_KEY" \
   -F "file=@engine.step"
 ```
 
 Keys are `rlt_test_...` or `rlt_live_...`. The raw value is returned only when it is created or rotated. Browser apps should use a backend-for-frontend or the authenticated dashboard; never bundle an API key into client JavaScript.
 
+Phone endpoints are `POST /v1/phone/start` with `{"phone":"+14155552671"}`
+and `POST /v1/phone/check` with the same E.164 number plus the received numeric
+`code`. A successful check creates or resumes the account and sets the same
+dashboard session cookie as email login. A missing SMS configuration returns
+`503`; malformed numbers return `422`; incorrect or expired codes return `401`.
+These endpoints require real Twilio credentials to deliver a code. There is no
+development backdoor that accepts a fixed code.
+
 ## Files and jobs
 
 | Endpoint | Description |
 | --- | --- |
 | `POST /v1/files` | Upload a supported source file and enqueue analysis. |
+| `GET /v1/files` | List up to 100 files owned by the caller. |
 | `GET /v1/files/{id}` | Poll state: `uploaded`, `queued`, `processing`, `ready`, or `failed`. |
 | `DELETE /v1/files/{id}` | Delete the tenant-owned source and derived records. |
 | `POST /v1/models/{id}/analyze` | Idempotently enqueue analysis again. |
@@ -34,10 +47,10 @@ Use `Idempotency-Key` on upload and analysis retries. IDs are UUIDs, not server 
 After a model is `ready`:
 
 ```bash
-curl https://api.reality.dev/v1/models/$MODEL_ID/summary \
+curl http://localhost:8000/v1/models/$MODEL_ID/summary \
   -H "Authorization: Bearer $REALITY_API_KEY"
 
-curl https://api.reality.dev/v1/models/$MODEL_ID/distance \
+curl http://localhost:8000/v1/models/$MODEL_ID/distance \
   -H "Authorization: Bearer $REALITY_API_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"first":"part-1","second":"part-2"}'
@@ -54,7 +67,7 @@ Submit an ordered plan whose operation names and parameters match the public
 `RealityModel.edit()` API:
 
 ```bash
-curl "https://api.reality.dev/v1/models/$MODEL_ID/edits" \
+curl "http://localhost:8000/v1/models/$MODEL_ID/edits" \
   -X POST \
   -H "Authorization: Bearer $REALITY_API_KEY" \
   -H "Content-Type: application/json" \

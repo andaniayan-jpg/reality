@@ -162,3 +162,81 @@ def test_api_edit_job_creates_an_independent_real_geometry_version(tmp_path: Pat
         assert edited[0]["bounds"]["minimum"][0] == pytest.approx(
             original[0]["bounds"]["minimum"][0] + 5.0
         )
+
+
+def test_phone_endpoints_fail_closed_without_sms_provider(tmp_path: Path) -> None:
+    app = create_app(settings(tmp_path))
+    with TestClient(app) as client:
+        invalid = client.post("/v1/phone/start", json={"phone": "4155552671"})
+        assert invalid.status_code == 422
+        unavailable = client.post("/v1/phone/start", json={"phone": "+14155552671"})
+        assert unavailable.status_code == 503
+        assert client.get("/v1/me").status_code == 401
+
+
+def test_file_listing_contains_only_authenticated_owners_real_models(tmp_path: Path) -> None:
+    app = create_app(settings(tmp_path))
+    with TestClient(app) as owner, TestClient(app) as other:
+        owner_key = account_and_key(owner, "list-owner@example.com")
+        other_key = account_and_key(other, "list-other@example.com")
+        mesh = trimesh.creation.box(extents=(1.0, 2.0, 3.0))
+        created = upload(owner, owner_key, "listed.obj", mesh.export(file_type="obj").encode())
+        mine = owner.get("/v1/files", headers={"Authorization": f"Bearer {owner_key}"})
+        theirs = other.get("/v1/files", headers={"Authorization": f"Bearer {other_key}"})
+        assert mine.status_code == theirs.status_code == 200
+        assert [item["id"] for item in mine.json()] == [created["id"]]
+        assert theirs.json() == []
+
+
+def test_phone_session_owns_a_real_model_after_provider_approval(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # This exercises Reality's auth/session/geometry path. SMS delivery itself
+    # needs live Twilio credentials and is not claimed by this test.
+    class ApprovedPhoneProvider:
+        def __init__(self, _settings: Settings) -> None:
+            pass
+
+        def start(self, phone: str) -> None:
+            assert phone == "+14155552671"
+
+        def check(self, phone: str, code: str) -> bool:
+            return phone == "+14155552671" and code == "123456"
+
+    monkeypatch.setattr("reality_api.main.TwilioPhoneVerifier", ApprovedPhoneProvider)
+    app = create_app(settings(tmp_path))
+    with TestClient(app) as client:
+        assert client.post("/v1/phone/start", json={"phone": "+14155552671"}).status_code == 200
+        rejected = client.post("/v1/phone/check", json={"phone": "+14155552671", "code": "000000"})
+        assert rejected.status_code == 401
+        verified = client.post("/v1/phone/check", json={"phone": "+14155552671", "code": "123456"})
+        assert verified.status_code == 200
+        assert verified.json()["phone"] == "+14155552671"
+        assert verified.json()["email"] is None
+        assert client.get("/v1/me").json()["id"] == verified.json()["id"]
+        raw_key = client.post("/v1/keys", json={"environment": "test"}).json()["key"]
+        mesh = trimesh.creation.box()
+        uploaded = upload(client, raw_key, "phone-user.obj", mesh.export(file_type="obj").encode())
+        summary = client.get(f"/v1/models/{uploaded['id']}/summary")
+        assert summary.status_code == 200
+        assert summary.json()["statistics"]["mesh_parts"] == 1
+        assert client.delete("/v1/sessions").status_code == 204
+        assert client.get("/v1/me").status_code == 401
+
+
+def test_dashboard_session_rejects_foreign_origin_mutations(tmp_path: Path) -> None:
+    app = create_app(settings(tmp_path))
+    with TestClient(app) as client:
+        account_and_key(client, "origin@example.com")
+        blocked = client.post(
+            "/v1/keys",
+            json={"environment": "test"},
+            headers={"Origin": "https://untrusted.example"},
+        )
+        assert blocked.status_code == 403
+        allowed = client.post(
+            "/v1/keys",
+            json={"environment": "test"},
+            headers={"Origin": "http://testserver"},
+        )
+        assert allowed.status_code == 201

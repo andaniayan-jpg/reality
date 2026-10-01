@@ -1,0 +1,33 @@
+{
+  "status": "PARTIAL",
+  "verified_at": "2026-10-02",
+  "local_browser": {
+    "engine": "Chromium",
+    "version": "145.0.7632.6",
+    "email_account": "PASS",
+    "api_key": "PASS",
+    "real_obj_upload_analysis": "PASS",
+    "summary": "PASS",
+    "parts": "PASS",
+    "measurement": "PASS",
+    "glb_preview_fetch": "PASS",
+    "webgl_component_registered": true,
+    "mobile_390px_no_horizontal_overflow": "PASS"
+  },
+  "tests": {
+    "passed": 131,
+    "skipped": 5,
+    "warning_count": 1,
+    "gpu_skip_reason": "CUDA driver/device unavailable"
+  },
+  "live_sms_verified": false,
+  "local_postgresql_migrations_001_to_003": "PASS",
+  "local_postgresql_api_obj_analysis": "PASS",
+  "postgresql_stack_verified": false,
+  "public_deployment_verified": false,
+  "fresh_wheel_verified": true,
+  "wheel_version": "0.2.1",
+  "wheel_filename": "reality-0.2.1-py3-none-any.whl",
+  "fresh_wheel_import_from_site_packages": true,
+  "fresh_wheel_real_obj_smoke": "PASS"
+}

@@ -22,6 +22,9 @@ class Settings:
     sync_analysis_bytes: int
     rate_limit_per_minute: int
     default_quota_bytes: int
+    twilio_account_sid: str | None = None
+    twilio_auth_token: str | None = None
+    twilio_verify_service_sid: str | None = None
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -52,4 +55,7 @@ class Settings:
             ),
             rate_limit_per_minute=int(os.getenv("REALITY_RATE_LIMIT_PER_MINUTE", "120")),
             default_quota_bytes=int(os.getenv("REALITY_DEFAULT_QUOTA_BYTES", str(5 * 1024**3))),
+            twilio_account_sid=os.getenv("REALITY_TWILIO_ACCOUNT_SID"),
+            twilio_auth_token=os.getenv("REALITY_TWILIO_AUTH_TOKEN"),
+            twilio_verify_service_sid=os.getenv("REALITY_TWILIO_VERIFY_SERVICE_SID"),
         )

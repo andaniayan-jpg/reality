@@ -28,7 +28,17 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .config import Settings
-from .database import Account, ApiKey, Database, FileRecord, Job, RequestLog, SessionToken
+from .database import (
+    Account,
+    ApiKey,
+    Database,
+    FileRecord,
+    Job,
+    PhoneStartAttempt,
+    RequestLog,
+    SessionToken,
+)
+from .phone import PhoneVerificationError, TwilioPhoneVerifier
 from .schemas import (
     AccountCreate,
     AccountResponse,
@@ -43,6 +53,9 @@ from .schemas import (
     Login,
     MeasureRequest,
     PartReference,
+    PhoneCheck,
+    PhoneStart,
+    PhoneStartResponse,
     RequestHistory,
     StructuredResult,
     TopologyRequest,
@@ -125,6 +138,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             else secrets.token_hex(16)
         )
         request.state.request_id = request_id
+        if (
+            request.method in {"POST", "PUT", "PATCH", "DELETE"}
+            and request.cookies.get("reality_session")
+            and not request.headers.get("Authorization", "").startswith("Bearer ")
+        ):
+            origin = request.headers.get("Origin")
+            own_origin = str(request.base_url).rstrip("/")
+            if origin is not None and origin not in {*configured.cors_origins, own_origin}:
+                return JSONResponse(
+                    status_code=403,
+                    content={
+                        "error": "request_rejected",
+                        "message": "dashboard request origin is not allowed",
+                        "request_id": request_id,
+                    },
+                    headers={"X-Request-Id": request_id},
+                )
         response = await call_next(request)
         # API-key authentication creates an immutable audit row before endpoint
         # execution. Update only its response status by request id afterwards.
@@ -262,6 +292,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             max_age=7 * 24 * 60 * 60,
         )
 
+    def issue_session(session: Session, response: Response, account: Account) -> None:
+        raw_token, expires_at = new_session_token()
+        session.add(
+            SessionToken(
+                owner_id=account.id,
+                token_hash=hash_secret(raw_token, configured),
+                expires_at=expires_at,
+            )
+        )
+        session.commit()
+        set_session_cookie(response, raw_token)
+
+    def account_response(account: Account) -> AccountResponse:
+        return AccountResponse(
+            id=account.id,
+            email=account.email,
+            phone=account.phone_e164,
+            created_at=account.created_at,
+        )
+
     @app.get("/healthz", tags=["health"])
     def health() -> dict[str, str]:
         return {"status": "ok"}
@@ -291,36 +341,105 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         session.add(account)
         session.flush()
-        raw_token, expires_at = new_session_token()
-        session.add(
-            SessionToken(
-                owner_id=account.id,
-                token_hash=hash_secret(raw_token, configured),
-                expires_at=expires_at,
-            )
-        )
-        session.commit()
-        set_session_cookie(response, raw_token)
-        return AccountResponse(id=account.id, email=account.email, created_at=account.created_at)
+        issue_session(session, response, account)
+        return account_response(account)
 
     @app.post("/v1/sessions", response_model=AccountResponse, tags=["accounts"])
     def login(
         payload: Login, response: Response, session: Session = Depends(session_dependency)
     ) -> AccountResponse:
         account = session.scalar(select(Account).where(Account.email == payload.email.lower()))
-        if account is None or not verify_password(payload.password, account.password_hash):
+        if (
+            account is None
+            or account.password_hash is None
+            or not verify_password(payload.password, account.password_hash)
+        ):
             raise HTTPException(401, "invalid email or password")
-        raw_token, expires_at = new_session_token()
-        session.add(
-            SessionToken(
-                owner_id=account.id,
-                token_hash=hash_secret(raw_token, configured),
-                expires_at=expires_at,
+        issue_session(session, response, account)
+        return account_response(account)
+
+    @app.get("/v1/me", response_model=AccountResponse, tags=["accounts"])
+    def me(principal: Principal = Depends(account_dependency)) -> AccountResponse:
+        return account_response(principal.account)
+
+    @app.post(
+        "/v1/phone/start",
+        response_model=PhoneStartResponse,
+        responses=ERROR_RESPONSES,
+        tags=["accounts"],
+    )
+    def start_phone_signin(
+        payload: PhoneStart,
+        request: Request,
+        session: Session = Depends(session_dependency),
+    ) -> PhoneStartResponse:
+        try:
+            verifier = TwilioPhoneVerifier(configured)
+        except PhoneVerificationError as error:
+            raise HTTPException(503, str(error)) from error
+        # Persistent counters work across API replicas. Hash phone/IP values so
+        # the rate-limit table does not become a second plaintext phone directory.
+        phone_hash = hash_secret(payload.phone, configured)
+        ip_hash = hash_secret(request.client.host if request.client else "unknown", configured)
+        recent = datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=1)
+        phone_count = int(
+            session.scalar(
+                select(func.count(PhoneStartAttempt.id)).where(
+                    PhoneStartAttempt.phone_hash == phone_hash,
+                    PhoneStartAttempt.created_at >= recent,
+                )
             )
+            or 0
         )
+        ip_count = int(
+            session.scalar(
+                select(func.count(PhoneStartAttempt.id)).where(
+                    PhoneStartAttempt.ip_hash == ip_hash,
+                    PhoneStartAttempt.created_at >= recent,
+                )
+            )
+            or 0
+        )
+        if phone_count >= 5 or ip_count >= 20:
+            raise HTTPException(429, "SMS request limit reached; try again later")
+        session.add(PhoneStartAttempt(phone_hash=phone_hash, ip_hash=ip_hash))
         session.commit()
-        set_session_cookie(response, raw_token)
-        return AccountResponse(id=account.id, email=account.email, created_at=account.created_at)
+        try:
+            verifier.start(payload.phone)
+        except PhoneVerificationError as error:
+            raise HTTPException(503, "SMS delivery is temporarily unavailable") from error
+        return PhoneStartResponse(status="sent")
+
+    @app.post(
+        "/v1/phone/check",
+        response_model=AccountResponse,
+        responses=ERROR_RESPONSES,
+        tags=["accounts"],
+    )
+    def check_phone_signin(
+        payload: PhoneCheck,
+        response: Response,
+        session: Session = Depends(session_dependency),
+    ) -> AccountResponse:
+        try:
+            verifier = TwilioPhoneVerifier(configured)
+            approved = verifier.check(payload.phone, payload.code)
+        except PhoneVerificationError as error:
+            raise HTTPException(503, "SMS verification is temporarily unavailable") from error
+        if not approved:
+            raise HTTPException(401, "invalid or expired verification code")
+        account = session.scalar(select(Account).where(Account.phone_e164 == payload.phone))
+        if account is None:
+            account = Account(
+                email=None,
+                password_hash=None,
+                phone_e164=payload.phone,
+                quota_bytes=configured.default_quota_bytes,
+            )
+            session.add(account)
+            session.flush()
+        issue_session(session, response, account)
+        return account_response(account)
 
     @app.delete("/v1/sessions", status_code=204, tags=["accounts"])
     def logout(
@@ -485,6 +604,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if record.size_bytes <= configured.sync_analysis_bytes and job.status == "queued":
             background.add_task(_background_process, database, storage, configured, job.id)
         return FileResponse(**file_view(record))
+
+    @app.get(
+        "/v1/files",
+        response_model=list[FileResponse],
+        responses=ERROR_RESPONSES,
+        tags=["files"],
+    )
+    def list_files(
+        principal: Principal = Depends(require_scope("files:read")),
+        session: Session = Depends(session_dependency),
+    ) -> list[FileResponse]:
+        records = session.scalars(
+            select(FileRecord)
+            .where(FileRecord.owner_id == principal.account.id)
+            .order_by(FileRecord.created_at.desc())
+            .limit(100)
+        ).all()
+        return [FileResponse(**file_view(record)) for record in records]
 
     @app.get(
         "/v1/files/{file_id}",

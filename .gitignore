@@ -14,3 +14,6 @@ dist/
 *.egg-info/
 navigation.svg
 .warp-cache/
+output/playwright/
+.reality-browser-test.db
+.reality-browser-storage/

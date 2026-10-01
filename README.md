@@ -75,9 +75,10 @@ or simulator fidelity. See [V3.md](V3.md) for real-host validation gates and
 [V4.md](V4.md) for the deliberately unimplemented platform design.
 
 With the optional `reality[physics]` dependency, `MuJoCoSceneIntegration`
-compiles real MJCF scenes and exchanges supported primitive geom bounds. It is
-not an exact mesh/CAD, joint, actuator, or sensor exporter; those omissions are
-returned as explicit warnings.
+compiles real MJCF scenes, exchanges supported primitive geom bounds, inspects
+joint/actuator/sensor declarations, and runs isolated control-range-validated
+local rollouts. It cannot command hardware. Run
+`python examples/mujoco_rollout.py` after installing `reality[physics]`.
 
 ## 60-second start
 

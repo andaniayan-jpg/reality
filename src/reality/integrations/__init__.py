@@ -11,7 +11,15 @@ from .base import (
     WorldIntegration,
 )
 from .manifest import SceneManifestError, SceneManifestIntegration
-from .mujoco import MuJoCoSceneIntegration
+from .mujoco import (
+    MuJoCoActuatorInfo,
+    MuJoCoBodyState,
+    MuJoCoJointInfo,
+    MuJoCoRolloutResult,
+    MuJoCoSceneInfo,
+    MuJoCoSceneIntegration,
+    MuJoCoSensorInfo,
+)
 
 __all__ = [
     "IntegrationCapability",
@@ -20,7 +28,13 @@ __all__ = [
     "IntegrationRegistry",
     "IntegrationSyncResult",
     "IntegrationUnavailableError",
+    "MuJoCoActuatorInfo",
+    "MuJoCoBodyState",
+    "MuJoCoJointInfo",
+    "MuJoCoRolloutResult",
+    "MuJoCoSceneInfo",
     "MuJoCoSceneIntegration",
+    "MuJoCoSensorInfo",
     "SceneManifestError",
     "SceneManifestIntegration",
     "UnsupportedIntegrationCapabilityError",

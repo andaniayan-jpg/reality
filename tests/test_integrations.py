@@ -151,6 +151,86 @@ def test_mujoco_mjcf_adapter_writes_a_file_that_mujoco_compiles(tmp_path: Path) 
     assert "bounding boxes" in result.warnings[0]
 
 
+def test_mujoco_mjcf_inspection_reads_real_joint_actuator_and_sensor_facts(tmp_path: Path) -> None:
+    pytest.importorskip("mujoco")
+    from reality import MuJoCoSceneIntegration
+
+    source = tmp_path / "arm.xml"
+    source.write_text(
+        """<mujoco model="arm">
+  <compiler angle="degree"/>
+  <worldbody>
+    <body name="arm">
+      <joint name="shoulder" type="hinge" axis="0 0 1" range="-45 90"/>
+      <geom name="link" type="capsule" size="0.05 0.4"/>
+    </body>
+  </worldbody>
+  <actuator>
+    <motor name="shoulder-motor" joint="shoulder" ctrllimited="true" ctrlrange="-2 2"/>
+  </actuator>
+  <sensor><jointpos name="shoulder-position" joint="shoulder"/></sensor>
+</mujoco>""",
+        encoding="utf-8",
+    )
+
+    info = MuJoCoSceneIntegration().inspect_scene(source)
+
+    assert info.units == "m"
+    assert info.geom_count == 1
+    assert len(info.joints) == len(info.actuators) == len(info.sensors) == 1
+    assert info.joints[0].name == "shoulder"
+    assert info.joints[0].kind == "hinge"
+    assert info.joints[0].axis == pytest.approx((0.0, 0.0, 1.0))
+    assert info.joints[0].limits == pytest.approx((-0.785398, 1.570796))
+    assert info.joints[0].units == "rad"
+    assert info.actuators[0].transmission == "joint"
+    assert info.actuators[0].target_name == "shoulder"
+    assert info.actuators[0].control_limits == pytest.approx((-2.0, 2.0))
+    assert info.sensors[0].name == "shoulder-position"
+
+
+def test_mujoco_rollout_uses_real_controls_and_never_commands_hardware(tmp_path: Path) -> None:
+    pytest.importorskip("mujoco")
+    from reality import MuJoCoSceneIntegration
+
+    source = tmp_path / "controlled-arm.xml"
+    source.write_text(
+        """<mujoco model="controlled-arm">
+  <option gravity="0 0 0"/>
+  <worldbody>
+    <body name="arm">
+      <joint name="shoulder" type="hinge" axis="0 0 1"/>
+      <geom type="capsule" size="0.05 0.4"/>
+    </body>
+  </worldbody>
+  <actuator>
+    <motor name="shoulder-motor" joint="shoulder" ctrllimited="true" ctrlrange="-2 2"/>
+  </actuator>
+  <sensor><jointpos name="shoulder-position" joint="shoulder"/></sensor>
+</mujoco>""",
+        encoding="utf-8",
+    )
+    adapter = MuJoCoSceneIntegration()
+
+    result = adapter.rollout(
+        source,
+        controls={"shoulder-motor": 1.0},
+        seconds=0.02,
+        time_step=0.002,
+    )
+
+    assert result.steps == 10
+    assert result.controls == {"shoulder-motor": 1.0}
+    assert result.sensor_readings["shoulder-position"]
+    assert result.bodies[0].name == "arm"
+    assert result.evidence["hardware_commanded"] is False
+    assert result.evidence["source_modified"] is False
+    with pytest.raises(ValueError, match="ctrlrange"):
+        adapter.rollout(source, controls={"shoulder-motor": 3.0}, seconds=0.0)
+    with pytest.raises(ValueError, match="unknown"):
+        adapter.rollout(source, controls={"missing": 1.0}, seconds=0.0)
+
+
 def test_mujoco_mjcf_export_requires_explicit_metre_units(tmp_path: Path) -> None:
     from reality import MuJoCoSceneIntegration
 

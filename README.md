@@ -14,6 +14,9 @@ run geometry queries, preview GLB models, and submit edits. Mobile-number
 sign-in uses Twilio Verify and requires server-side provider credentials; email
 sign-in still works without them. Neither the site nor these v3/v4 foundations
 are claimed as a deployed public service in this repository.
+The [website guide](apps/web/README.md) explains its locally bundled WebGL
+homepage, cursor-responsive 3D geometry, timed light/dark theme, and browser
+verification.
 
 ## v0.2 structural 3D/CAD reading
 

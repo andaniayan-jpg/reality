@@ -14,6 +14,28 @@
     "webgl_component_registered": true,
     "mobile_390px_no_horizontal_overflow": "PASS"
   },
+  "homepage": {
+    "approved_desktop_reference_images": 2,
+    "desktop_reference_size": [1586, 992],
+    "desktop_rest_frame_pixel_match": "PASS",
+    "desktop_rest_uses_reference_artwork": true,
+    "desktop_hover_uses_procedural_volumetric_meshes": true,
+    "desktop_hover_meshes": 7,
+    "desktop_hover_pixel_identical_to_reference": false,
+    "mobile_procedural_webgl_fallback": true,
+    "procedural_webgl_objects": 7,
+    "source_3d_models_provided": false,
+    "cursor_repulsion_observed": "PASS",
+    "approach_speed_and_mass_unit_tests": "PASS",
+    "javascript_tests_passed": 5,
+    "three_second_theme_cycle": "PASS",
+    "pause_control": "PASS",
+    "reduced_motion": "PASS",
+    "mobile_390px_no_horizontal_overflow": "PASS",
+    "locally_bundled_three_version": "0.186.0",
+    "web_docker_build": "PASS",
+    "web_docker_http_homepage_and_bundle": "PASS"
+  },
   "tests": {
     "passed": 131,
     "skipped": 5,

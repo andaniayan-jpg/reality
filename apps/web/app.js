@@ -28,17 +28,99 @@ function showOutput(value) {
   if (element) element.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 function home() {
-  app.innerHTML = page("REALITY / PHYSICAL INTELLIGENCE", "Understand a world before you change it.",
-    "Read real 3D and CAD files. Ask precise spatial questions. Test changes and keep the evidence.", `
-    <div class="actions"><a class="button" href="/playground">Open playground</a><a class="button secondary" href="/docs">Explore API</a></div>
-    <div class="feature-grid"><article><span class="eyebrow">01 / READ</span><h2>Inspect the source</h2><p>OBJ, STL, PLY, GLB, glTF, and optional STEP geometry with named parts, bounds, and topology where available.</p></article>
-    <article><span class="eyebrow">02 / REASON</span><h2>Measure what exists</h2><p>Distance, clearance, intersections, and topology. The Python package also supports branching, visibility, and MuJoCo simulations.</p></article>
-    <article><span class="eyebrow">03 / CHANGE</span><h2>Make a checked edit</h2><p>Submit a geometry edit and keep the original as a separate model version. Results carry units and evidence.</p></article></div>
-    <section class="terminal"><div class="result-head">A small Reality query</div><pre>import reality
-model = reality.open("assembly.step")
-print(model.summary())
-print(model.clearance("shaft", "housing"))</pre></section>
-    <p class="muted">STEP support requires the optional CAD dependency. Keep API keys on your server.</p>`);
+  document.body.classList.add("home-page");
+  document.body.dataset.heroTheme = "light";
+  app.innerHTML = `
+    <section class="home-hero" id="home-hero" aria-labelledby="home-title">
+      <canvas id="hero-3d" aria-hidden="true"></canvas>
+      <div class="hero-reference" aria-hidden="true"></div>
+      <div class="hero-fallback" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="hero-copy">
+        <p class="hero-kicker">Physical worlds, programmable</p>
+        <h1 id="home-title">REALITY</h1>
+        <p class="hero-subtitle">Make physical worlds programmable.</p>
+        <div class="hero-actions">
+          <a class="button" href="/playground">Open playground</a>
+          <a class="button secondary" href="/docs">Read the docs</a>
+        </div>
+      </div>
+      <div class="hero-bottom">
+        <p>Move closer. The objects respond.</p>
+        <button id="motion-toggle" type="button" aria-pressed="false">Pause motion</button>
+      </div>
+    </section>
+    <section class="home-story" id="why-reality">
+      <p class="story-overline">The world is data you can question.</p>
+      <h2>Read it. Reason about it.<br>Change what happens next.</h2>
+      <div class="story-lines">
+        <article><h3>Read real geometry</h3><p>Inspect OBJ, STL, PLY, GLB and glTF files. Add STEP support with the optional CAD dependency.</p></article>
+        <article><h3>Get physical answers</h3><p>Measure parts, distance and clearance, inspect topology, and find intersections with explicit evidence.</p></article>
+        <article><h3>Test a change</h3><p>Create a validated edit as a new model version. Your source stays intact while you inspect the result.</p></article>
+      </div>
+    </section>
+    <section class="home-end"><h2>Start with a model.<br>Leave with an answer.</h2>
+      <a class="button" href="/dashboard/keys">Get an API key</a></section>`;
+
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const motionButton = document.querySelector("#motion-toggle");
+  let paused = reducedMotion;
+  let sceneController;
+  let referenceController;
+  const active3d = new Set();
+  let themeTimer;
+  const syncSceneMotion = () => {
+    sceneController?.setPaused(paused);
+    const webglUnavailable = document.querySelector("#home-hero")?.classList.contains("no-webgl");
+    referenceController?.setPaused(paused || !webglUnavailable || window.innerWidth < 1100);
+  };
+  const startTheme = () => {
+    clearInterval(themeTimer);
+    if (!paused) themeTimer = setInterval(() => {
+      if (!document.hidden) document.body.dataset.heroTheme =
+        document.body.dataset.heroTheme === "light" ? "dark" : "light";
+    }, 3000);
+  };
+  const refreshButton = () => {
+    motionButton.textContent = paused ? "Resume animation" : "Pause animation";
+    motionButton.setAttribute("aria-pressed", String(paused));
+  };
+  motionButton.onclick = () => {
+    paused = !paused;
+    syncSceneMotion();
+    refreshButton();
+    startTheme();
+  };
+  refreshButton();
+  startTheme();
+  window.addEventListener("resize", syncSceneMotion, { passive: true });
+  import("/hero-reference.js")
+    .then(({ mountReferenceScene }) => mountReferenceScene(
+      document.querySelector("#home-hero"), document.querySelector(".hero-reference"),
+      true,
+    ))
+    .then((controller) => {
+      referenceController = controller;
+      for (const index of active3d) controller.set3dActive(index, true);
+      syncSceneMotion();
+    })
+    .catch(() => document.querySelector("#home-hero")?.classList.add("no-reference"));
+  import("/hero3d.bundle.js")
+    .then(({ mountHeroScene }) => {
+      sceneController = mountHeroScene(
+        document.querySelector("#home-hero"), document.querySelector("#hero-3d"),
+        paused,
+        (index, active) => {
+          if (active) active3d.add(index);
+          else active3d.delete(index);
+          referenceController?.set3dActive(index, active);
+        },
+      );
+      syncSceneMotion();
+    })
+    .catch(() => {
+      document.querySelector("#home-hero")?.classList.add("no-webgl");
+      syncSceneMotion();
+    });
 }
 function docs() {
   app.innerHTML = page("DEVELOPER DOCS", "One engine. Two ways in.",

@@ -1,0 +1,15 @@
+{
+  "name": "reality-developer-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:hero": "node scripts/build-hero.mjs",
+    "test": "node --test test"
+  },
+  "dependencies": {
+    "three": "0.186.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

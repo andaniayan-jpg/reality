@@ -17,3 +17,4 @@ navigation.svg
 output/playwright/
 .reality-browser-test.db
 .reality-browser-storage/
+node_modules/

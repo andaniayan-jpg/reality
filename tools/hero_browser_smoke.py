@@ -25,6 +25,13 @@ def main() -> None:
         assert page.locator("#home-title").inner_text() == "REALITY"
         assert page.locator(".hero-actions .button").count() == 2
         assert page.locator("body").get_attribute("data-hero-theme") == "light"
+        title_style = page.evaluate("""() => {
+          const style = getComputedStyle(document.querySelector('#home-title'));
+          return { font: style.fontFamily, weight: style.fontWeight, color: style.color };
+        }""")
+        assert title_style["font"].startswith('"Arial Black"')
+        assert title_style["weight"] == "900"
+        assert title_style["color"] == "rgb(9, 10, 12)"
         assert page.locator(".nav nav a").count() == 4
         before = page.evaluate("document.querySelector('#hero-3d').heroMotionState")
         page.wait_for_timeout(350)
@@ -33,12 +40,22 @@ def main() -> None:
         page.screenshot(path=str(output / "reality-hero-light.png"), full_page=False)
 
         page.wait_for_function("document.body.dataset.heroTheme === 'dark'", timeout=5000)
+        # Pause the interval while sampling a full transition; otherwise the
+        # three-second timer can race with the screenshot and make this flaky.
+        page.locator("#motion-toggle").click()
+        page.evaluate("document.body.dataset.heroTheme = 'light'")
+        page.wait_for_timeout(1800)
+        page.evaluate("document.body.dataset.heroTheme = 'dark'")
         page.wait_for_timeout(450)
         mid_color = page.evaluate("getComputedStyle(document.body).backgroundColor")
         assert mid_color not in {"rgb(255, 255, 255)", "rgb(27, 28, 30)"}, mid_color
         page.wait_for_timeout(1500)
         assert page.evaluate("getComputedStyle(document.body).backgroundColor") == "rgb(27, 28, 30)"
+        assert page.evaluate("getComputedStyle(document.querySelector('#home-title')).color") == (
+            "rgb(248, 248, 246)"
+        )
         page.screenshot(path=str(output / "reality-hero-dark.png"), full_page=False)
+        page.locator("#motion-toggle").click()
         before_push = page.evaluate("document.querySelector('#hero-3d').heroMotionState")
         target = before_push[0]
         page.mouse.move(target["x"] + 220, target["y"])

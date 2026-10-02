@@ -13,6 +13,8 @@ body.home-page{
   --bg:#fff;
   --text:#17191c;
   --muted:#4e5157;
+  --hero-title:#090a0c;
+  --hero-subtitle:#283241;
   --line:#d4d6da;
   --accent:#105bfa;
   background:#fff;
@@ -24,6 +26,8 @@ body.home-page[data-hero-theme="dark"]{
   --bg:#1b1c1e;
   --text:#f7f7f4;
   --muted:#c6c7cb;
+  --hero-title:#f8f8f6;
+  --hero-subtitle:#d0d0df;
   --line:#696b71;
   background:#1b1c1e;
   color-scheme:dark;
@@ -67,8 +71,8 @@ body.home-page footer{border-color:var(--line);transition:border-color .8s ease}
 .hero-kicker{margin:0 0 1.35rem;color:var(--text);font-size:.96rem;font-weight:750;letter-spacing:.22em;text-transform:uppercase;transition:color 1.7s ease}
 .hero-copy h1{
   margin:0;
-  color:var(--text);
-  font-family:Arial,Helvetica,sans-serif;
+  color:var(--hero-title);
+  font-family:"Arial Black",Arial,Helvetica,sans-serif;
   font-size:clamp(6.3rem,16.1vw,16rem);
   font-weight:900;
   line-height:.83;
@@ -79,7 +83,7 @@ body.home-page footer{border-color:var(--line);transition:border-color .8s ease}
 .hero-subtitle{
   max-width:650px;
   margin:2.4rem auto 0;
-  color:var(--text);
+  color:var(--hero-subtitle);
   font-size:clamp(1.65rem,3vw,2.8rem);
   font-weight:750;
   letter-spacing:-.048em;
@@ -116,13 +120,13 @@ body.home-page footer{border-color:var(--line);transition:border-color .8s ease}
   body.home-page .nav nav{gap:2.8vw}
   body.home-page .nav-cta{width:8.8vw;min-height:50px;padding:0}
   .hero-copy{z-index:2;top:50%;width:min(1120px,calc(100% - 3rem))}
-  .hero-kicker{font-size:clamp(.75rem,1vw,1rem);font-weight:600;letter-spacing:.38em;margin-bottom:1.45rem}
-  .hero-copy h1{font-size:clamp(8rem,14.5vw,14.6rem);line-height:.88;letter-spacing:-.075em;transform:scaleX(.91)}
-  .hero-subtitle{font-size:clamp(2.3rem,3.85vw,3.85rem);margin-top:1.05rem;line-height:1.02;letter-spacing:-.055em}
-  .hero-actions{gap:18px;margin-top:2.2rem}
+  .hero-kicker{font-size:clamp(.75rem,1vw,1rem);font-weight:600;letter-spacing:.38em;margin-bottom:1.45rem;transform:translateY(8px)}
+  .hero-copy h1{font-size:clamp(8rem,14.5vw,14.6rem);line-height:.88;letter-spacing:-.075em;transform:translateY(10px) scaleX(.91) scaleY(1.32)}
+  .hero-subtitle{font-size:clamp(2.3rem,4vw,4rem);margin-top:1.88rem;line-height:1.02;letter-spacing:-.04em}
+  .hero-actions{gap:18px;margin-top:2.25rem}
   .hero-actions .button:first-child{min-width:252px}
   .hero-actions .button.secondary{min-width:218px}
-  .hero-actions .button{min-height:70px}
+  .hero-actions .button{min-height:70px;font-size:1.2rem;font-weight:700}
   .hero-bottom{opacity:.68}
 }
 

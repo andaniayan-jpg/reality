@@ -4,8 +4,11 @@ The homepage is a continuously rendered Three.js scene with live HTML text and
 links. Seven procedural 3D pieces loosely follow the supplied light/dark visual
 references. There is no static-image-to-mesh swap when the cursor approaches.
 The renderer is bundled locally, so the hero does not need a third-party CDN.
-The live `REALITY` headline prefers Arial Black, with desktop-only proportions,
-spacing, and theme colors tuned against the 1586 × 992 references.
+At desktop widths, the visible `REALITY` headline is isolated from the supplied
+light/dark artwork with an SVG luminance filter, so its distinctive letterforms
+are retained without painting the source image's background or static objects.
+The actual `<h1>` remains accessible text and is the fallback if either image
+fails to load. Mobile uses that live text directly.
 
 The supplied references were **still images, not 3D model files**. The meshes
 are authored in `hero3d.js`, not reconstructed source models. Exact hidden

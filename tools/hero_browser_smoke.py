@@ -21,6 +21,7 @@ def main() -> None:
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto("http://127.0.0.1:3000/", wait_until="networkidle")
         page.locator("#hero-3d[data-rendered=true]").wait_for(timeout=15000)
+        page.locator("#home-hero.title-art-ready").wait_for(timeout=15000)
         assert page.locator("#hero-3d").get_attribute("data-body-count") == "7"
         assert page.locator("#home-title").inner_text() == "REALITY"
         assert page.locator(".hero-actions .button").count() == 2
@@ -31,7 +32,8 @@ def main() -> None:
         }""")
         assert title_style["font"].startswith('"Arial Black"')
         assert title_style["weight"] == "900"
-        assert title_style["color"] == "rgb(9, 10, 12)"
+        assert title_style["color"] == "rgba(0, 0, 0, 0)"
+        assert page.locator(".hero-title-art").count() == 2
         assert page.locator(".nav nav a").count() == 4
         before = page.evaluate("document.querySelector('#hero-3d').heroMotionState")
         page.wait_for_timeout(350)
@@ -49,10 +51,14 @@ def main() -> None:
         page.wait_for_timeout(450)
         mid_color = page.evaluate("getComputedStyle(document.body).backgroundColor")
         assert mid_color not in {"rgb(255, 255, 255)", "rgb(27, 28, 30)"}, mid_color
+        page.screenshot(path=str(output / "reality-hero-transition.png"), full_page=False)
         page.wait_for_timeout(1500)
         assert page.evaluate("getComputedStyle(document.body).backgroundColor") == "rgb(27, 28, 30)"
-        assert page.evaluate("getComputedStyle(document.querySelector('#home-title')).color") == (
-            "rgb(248, 248, 246)"
+        assert (
+            page.evaluate(
+                "getComputedStyle(document.querySelector('.hero-title-art-dark')).opacity"
+            )
+            == "1"
         )
         page.screenshot(path=str(output / "reality-hero-dark.png"), full_page=False)
         page.locator("#motion-toggle").click()
@@ -71,6 +77,10 @@ def main() -> None:
         paused_theme = page.locator("body").get_attribute("data-hero-theme")
         page.wait_for_timeout(3200)
         assert page.locator("body").get_attribute("data-hero-theme") == paused_theme
+
+        page.set_viewport_size({"width": 1200, "height": 800})
+        page.screenshot(path=str(output / "reality-hero-laptop.png"), full_page=False)
+        assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
 
         page.set_viewport_size({"width": 390, "height": 844})
         page.screenshot(path=str(output / "reality-hero-mobile.png"), full_page=False)
@@ -101,7 +111,9 @@ def main() -> None:
                     "screenshots": [
                         str(output / "reality-hero-light.png"),
                         str(output / "reality-hero-dark.png"),
+                        str(output / "reality-hero-transition.png"),
                         str(output / "reality-hero-interaction.png"),
+                        str(output / "reality-hero-laptop.png"),
                         str(output / "reality-hero-mobile.png"),
                     ],
                 }

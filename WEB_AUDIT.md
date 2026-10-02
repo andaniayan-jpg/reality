@@ -31,7 +31,10 @@ credentials were configured on the development machine.
   generated OBJ, and received a real Reality model summary from that database.
   The disposable container was stopped and removed afterward.
 - The desktop and mobile homepage now render seven procedural Three.js objects
-  continuously behind live HTML text and links. Cursor approach speed changes
+  continuously behind live HTML links and copy. The desktop `REALITY` headline
+  uses a transparent luminance-filtered rendering of the supplied artwork;
+  its accessible `<h1>` remains the fallback, and mobile uses live text. Cursor
+  approach speed changes
   the repulsive force; objects retain velocity and tumble rather than scaling
   or springing back. The background and text transition over 1.7 seconds while
   the theme changes every three seconds. Six Node physics tests passed.

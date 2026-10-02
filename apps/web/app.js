@@ -33,6 +33,20 @@ function home() {
   app.innerHTML = `
     <section class="home-hero" id="home-hero" aria-labelledby="home-title">
       <canvas id="hero-3d" aria-hidden="true"></canvas>
+      <svg class="hero-title-art hero-title-art-light" viewBox="0 0 1586 992" preserveAspectRatio="none" aria-hidden="true">
+        <defs><filter id="hero-title-light-filter" color-interpolation-filters="sRGB">
+          <feColorMatrix type="matrix" values="0 0 0 0 .035  0 0 0 0 .039  0 0 0 0 .047  -.2126 -.7152 -.0722 0 1" />
+          <feComponentTransfer><feFuncA type="linear" slope="4" intercept="-2.8" /></feComponentTransfer>
+        </filter></defs>
+        <image href="/assets/hero-light.png" width="1586" height="992" filter="url(#hero-title-light-filter)" />
+      </svg>
+      <svg class="hero-title-art hero-title-art-dark" viewBox="0 0 1586 992" preserveAspectRatio="none" aria-hidden="true">
+        <defs><filter id="hero-title-dark-filter" color-interpolation-filters="sRGB">
+          <feColorMatrix type="matrix" values="0 0 0 0 .973  0 0 0 0 .973  0 0 0 0 .965  .2126 .7152 .0722 0 0" />
+          <feComponentTransfer><feFuncA type="linear" slope="2.5" intercept="-1.5" /></feComponentTransfer>
+        </filter></defs>
+        <image href="/assets/hero-dark.png" width="1586" height="992" filter="url(#hero-title-dark-filter)" />
+      </svg>
       <div class="hero-fallback" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
       <div class="hero-copy">
         <p class="hero-kicker">Physical worlds, programmable</p>
@@ -59,6 +73,14 @@ function home() {
     </section>
     <section class="home-end"><h2>Start with a model.<br>Leave with an answer.</h2>
       <a class="button" href="/dashboard/keys">Get an API key</a></section>`;
+
+  Promise.all(["light", "dark"].map((theme) => new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = resolve;
+    image.onerror = reject;
+    image.src = `/assets/hero-${theme}.png`;
+  }))).then(() => document.querySelector("#home-hero")?.classList.add("title-art-ready"))
+    .catch(() => {});
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const motionButton = document.querySelector("#motion-toggle");

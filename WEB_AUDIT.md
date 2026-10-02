@@ -30,19 +30,18 @@ credentials were configured on the development machine.
   and 003. A FastAPI client then created an account and API key, uploaded a
   generated OBJ, and received a real Reality model summary from that database.
   The disposable container was stopped and removed afterward.
-- The desktop homepage uses the two approved source images for its exact
-  resting composition. At 1586 × 992, Chromium screenshots of both themes
-  were pixel-identical to those images. On cursor approach, the selected piece
-  is replaced by a real procedural Three.js mesh that responds to motion.
-  Source 3D meshes were not supplied: moving geometry, material highlights,
-  shadow masking, and hidden faces are approximations, not pixel-identical to
-  the still images. Mobile displays the procedural scene directly. Five Node
-  physics tests passed.
-- Chromium verified real link hit targets over the artwork, cursor-driven
-  displacement, the three-second white/charcoal theme cycle, pause,
-  reduced-motion behavior, and no horizontal overflow at 390 pixels. The
-  light, dark, interaction, and mobile screenshots are produced by
-  `python tools/hero_browser_smoke.py`.
+- The desktop and mobile homepage now render seven procedural Three.js objects
+  continuously behind live HTML text and links. Cursor approach speed changes
+  the repulsive force; objects retain velocity and tumble rather than scaling
+  or springing back. The background and text transition over 1.7 seconds while
+  the theme changes every three seconds. Six Node physics tests passed.
+- Chromium verified continuous drift, cursor-driven displacement, fixed object
+  scale, smooth intermediate theme colors, pause, reduced-motion behavior, and
+  no horizontal overflow at 390 pixels. The light, dark, interaction, and
+  mobile screenshots are produced by `python tools/hero_browser_smoke.py`.
+- The source images are design references, not live backgrounds or geometry.
+  The procedural objects are not pixel-identical to them; exact shape, hidden
+  faces, materials and shadows would require source 3D assets.
 - The homepage renderer is pinned to three.js 0.186.0 and bundled locally. The
   nginx website image built successfully, and a disposable container served
   both the homepage and the WebGL bundle with HTTP 200.

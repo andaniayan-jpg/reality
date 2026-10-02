@@ -1,4 +1,4 @@
-"""Verify approved desktop art, real 3D hover, themes, and mobile geometry.
+"""Verify live 3D motion, smooth themes, and mobile geometry.
 
 Run ``python tools/dev_web.py`` first. Requires Playwright Chromium.
 """
@@ -22,40 +22,33 @@ def main() -> None:
         page.goto("http://127.0.0.1:3000/", wait_until="networkidle")
         page.locator("#hero-3d[data-rendered=true]").wait_for(timeout=15000)
         assert page.locator("#hero-3d").get_attribute("data-body-count") == "7"
-        assert page.locator(".hero-reference").get_attribute("data-body-count") == "7"
         assert page.locator("#home-title").inner_text() == "REALITY"
         assert page.locator(".hero-actions .button").count() == 2
         assert page.locator("body").get_attribute("data-hero-theme") == "light"
-        # The reference artwork is visual; these real anchors must align with
-        # the buttons and navigation that a user sees in that artwork.
-        hit_targets = {
-            (590, 44): "/#why-reality",
-            (695, 44): "/docs",
-            (802, 44): "/playground",
-            (932, 44): "/dashboard",
-            (1080, 44): "/dashboard/keys",
-            (675, 719): "/playground",
-            (927, 719): "/docs",
-        }
-        for point, href in hit_targets.items():
-            actual = page.evaluate(
-                "([x, y]) => document.elementFromPoint(x, y)?.closest('a')?.getAttribute('href')",
-                list(point),
-            )
-            assert actual == href, (point, actual, href)
+        assert page.locator(".nav nav a").count() == 4
+        before = page.evaluate("document.querySelector('#hero-3d').heroMotionState")
+        page.wait_for_timeout(350)
+        drift = page.evaluate("document.querySelector('#hero-3d').heroMotionState")
+        assert any(abs(a["x"] - b["x"]) > 1 for a, b in zip(before, drift, strict=True))
         page.screenshot(path=str(output / "reality-hero-light.png"), full_page=False)
 
         page.wait_for_function("document.body.dataset.heroTheme === 'dark'", timeout=5000)
-        page.wait_for_timeout(900)
+        page.wait_for_timeout(450)
+        mid_color = page.evaluate("getComputedStyle(document.body).backgroundColor")
+        assert mid_color not in {"rgb(255, 255, 255)", "rgb(27, 28, 30)"}, mid_color
+        page.wait_for_timeout(1500)
         assert page.evaluate("getComputedStyle(document.body).backgroundColor") == "rgb(27, 28, 30)"
         page.screenshot(path=str(output / "reality-hero-dark.png"), full_page=False)
-        page.mouse.move(650, 470)
-        page.mouse.move(120, 470, steps=4)
+        before_push = page.evaluate("document.querySelector('#hero-3d').heroMotionState")
+        target = before_push[0]
+        page.mouse.move(target["x"] + 220, target["y"])
+        page.mouse.move(target["x"] - 35, target["y"], steps=3)
         page.locator("#hero-3d[data-motion-observed=true]").wait_for(timeout=5000)
-        page.wait_for_function(
-            "Number(document.querySelector('.hero-reference')?.dataset.active3dCount) > 0",
-            timeout=5000,
-        )
+        page.wait_for_timeout(400)
+        after_push = page.evaluate("document.querySelector('#hero-3d').heroMotionState")
+        assert abs(after_push[0]["x"] - before_push[0]["x"]) > 2
+        assert all(a["scale"] == b["scale"] for a, b in zip(before_push, after_push, strict=True))
+        assert any(a["angle"] != b["angle"] for a, b in zip(before_push, after_push, strict=True))
         page.screenshot(path=str(output / "reality-hero-interaction.png"), full_page=False)
         page.locator("#motion-toggle").click()
         paused_theme = page.locator("body").get_attribute("data-hero-theme")
@@ -80,10 +73,11 @@ def main() -> None:
             json.dumps(
                 {
                     "webgl_bodies": 7,
-                    "approved_artwork_planes": 7,
-                    "real_3d_hover": "PASS",
+                    "continuous_3d": "PASS",
                     "cursor_repulsion": "PASS",
-                    "three_second_theme": "PASS",
+                    "inertial_drift_and_rotation": "PASS",
+                    "fixed_object_scale": "PASS",
+                    "smooth_three_second_theme": "PASS",
                     "pause_control": "PASS",
                     "mobile_no_horizontal_overflow": "PASS",
                     "reduced_motion": "PASS",

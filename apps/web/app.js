@@ -33,12 +33,11 @@ function home() {
   app.innerHTML = `
     <section class="home-hero" id="home-hero" aria-labelledby="home-title">
       <canvas id="hero-3d" aria-hidden="true"></canvas>
-      <div class="hero-reference" aria-hidden="true"></div>
       <div class="hero-fallback" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
       <div class="hero-copy">
         <p class="hero-kicker">Physical worlds, programmable</p>
         <h1 id="home-title">REALITY</h1>
-        <p class="hero-subtitle">Make physical worlds programmable.</p>
+        <p class="hero-subtitle">Make physical worlds<br>programmable.</p>
         <div class="hero-actions">
           <a class="button" href="/playground">Open playground</a>
           <a class="button secondary" href="/docs">Read the docs</a>
@@ -65,13 +64,9 @@ function home() {
   const motionButton = document.querySelector("#motion-toggle");
   let paused = reducedMotion;
   let sceneController;
-  let referenceController;
-  const active3d = new Set();
   let themeTimer;
   const syncSceneMotion = () => {
     sceneController?.setPaused(paused);
-    const webglUnavailable = document.querySelector("#home-hero")?.classList.contains("no-webgl");
-    referenceController?.setPaused(paused || !webglUnavailable || window.innerWidth < 1100);
   };
   const startTheme = () => {
     clearInterval(themeTimer);
@@ -92,28 +87,11 @@ function home() {
   };
   refreshButton();
   startTheme();
-  window.addEventListener("resize", syncSceneMotion, { passive: true });
-  import("/hero-reference.js")
-    .then(({ mountReferenceScene }) => mountReferenceScene(
-      document.querySelector("#home-hero"), document.querySelector(".hero-reference"),
-      true,
-    ))
-    .then((controller) => {
-      referenceController = controller;
-      for (const index of active3d) controller.set3dActive(index, true);
-      syncSceneMotion();
-    })
-    .catch(() => document.querySelector("#home-hero")?.classList.add("no-reference"));
   import("/hero3d.bundle.js")
     .then(({ mountHeroScene }) => {
       sceneController = mountHeroScene(
         document.querySelector("#home-hero"), document.querySelector("#hero-3d"),
         paused,
-        (index, active) => {
-          if (active) active3d.add(index);
-          else active3d.delete(index);
-          referenceController?.set3dActive(index, active);
-        },
       );
       syncSceneMotion();
     })

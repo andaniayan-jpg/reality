@@ -97,16 +97,16 @@ function modularCube() {
 }
 
 const PIECES = [
-  { shape: () => brick(1, 2, PALETTE.pink), x: 0.105, y: 0.15, scale: 2.8, radius: 235, mass: 1, rotation: [0.55, 0.48, -0.35] },
-  { shape: modularCube, x: 0.87, y: 0.2, scale: 1.8, radius: 300, mass: 2.2, rotation: [0.42, -0.62, 0.22] },
+  { shape: () => brick(1, 2, PALETTE.pink), x: 0.09, y: 0.12, scale: 2.15, radius: 210, mass: 1, rotation: [0.55, 0.48, -0.35] },
+  { shape: modularCube, x: 0.91, y: 0.18, scale: 1.23, radius: 240, mass: 2.2, rotation: [0.42, -0.62, 0.22] },
   { shape: () => brick(1, 2, PALETTE.cyan), x: 0.08, y: 0.48, scale: 1.4, radius: 225, mass: 0.9, rotation: [0.75, -0.35, -0.8] },
-  { shape: () => brick(2, 2, PALETTE.yellow), x: 0.16, y: 0.83, scale: 3.1, radius: 320, mass: 2.5, rotation: [0.45, -0.3, -0.34] },
+  { shape: () => brick(2, 2, PALETTE.yellow), x: 0.13, y: 0.88, scale: 2.35, radius: 270, mass: 2.5, rotation: [0.45, -0.3, -0.34] },
   { shape: () => brick(1, 1, PALETTE.white), x: 0.86, y: 0.63, scale: 1.4, radius: 195, mass: 0.7, rotation: [0.55, 0.35, -0.38] },
-  { shape: () => brick(1, 2, PALETTE.pink, true), x: 0.94, y: 0.84, scale: 2.2, radius: 230, mass: 1, rotation: [-0.35, 0.9, 0.35] },
-  { shape: () => brick(1, 1, PALETTE.violet), x: 0.72, y: 0.92, scale: 1.9, radius: 180, mass: 0.75, rotation: [0.55, -0.3, 0.25] },
+  { shape: () => brick(1, 2, PALETTE.pink, true), x: 0.98, y: 0.86, scale: 1.65, radius: 200, mass: 1, rotation: [-0.35, 0.9, 0.35] },
+  { shape: () => brick(1, 1, PALETTE.violet), x: 0.72, y: 1.01, scale: 1.5, radius: 165, mass: 0.75, rotation: [0.55, -0.3, 0.25] },
 ];
 
-export function mountHeroScene(hero, canvas, reducedMotion = false, onBodyVisibility = () => {}) {
+export function mountHeroScene(hero, canvas, reducedMotion = false) {
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "low-power" });
@@ -132,19 +132,26 @@ export function mountHeroScene(hero, canvas, reducedMotion = false, onBodyVisibi
   const camera = new THREE.OrthographicCamera(-6, 6, 4, -4, 0.1, 100);
   camera.position.z = 24;
 
-  const bodies = PIECES.map((spec) => {
+  const bodies = PIECES.map((spec, index) => {
     const group = spec.shape();
     group.rotation.set(...spec.rotation);
     scene.add(group);
     return {
       ...spec,
       group,
-      homeX: 0,
-      homeY: 0,
-      offsetX: 0,
-      offsetY: 0,
+      anchorX: spec.x,
+      anchorY: spec.y,
+      x: 0,
+      y: 0,
       vx: 0,
       vy: 0,
+      spin: [0.11, -0.08, 0.07, -0.055, 0.09, -0.12, 0.08][index],
+      angle: spec.rotation[2],
+      tiltX: spec.rotation[0],
+      tiltY: spec.rotation[1],
+      tiltVX: 0,
+      tiltVY: 0,
+      edgeMargin: 90,
     };
   });
   const pointer = { active: false, x: 0, y: 0, vx: 0, vy: 0, lastMove: 0 };
@@ -155,17 +162,21 @@ export function mountHeroScene(hero, canvas, reducedMotion = false, onBodyVisibi
   let motionPaused = reducedMotion;
   let raf = 0;
   let lastFrame = performance.now();
+  let initialized = false;
+  let previousMobile = false;
 
   function position(body) {
     body.group.position.set(
-      (body.homeX + body.offsetX - width / 2) / pixelsPerUnit,
-      (height / 2 - body.homeY - body.offsetY) / pixelsPerUnit,
+      (body.x - width / 2) / pixelsPerUnit,
+      (height / 2 - body.y) / pixelsPerUnit,
       0,
     );
   }
 
   function resize() {
     const rect = hero.getBoundingClientRect();
+    const previousWidth = width;
+    const previousHeight = height;
     width = Math.max(1, rect.width);
     height = Math.max(1, rect.height);
     pixelsPerUnit = width / 12;
@@ -177,22 +188,29 @@ export function mountHeroScene(hero, canvas, reducedMotion = false, onBodyVisibi
     camera.updateProjectionMatrix();
     renderer.setSize(width, height, false);
     const mobileAnchors = [
-      [-0.02, 0.25], [1.13, 0.28], [-0.10, 0.52], [0.08, 1.04],
-      [1.12, 0.62], [1.05, 1.01], [0.73, 1.13],
+      [0.15, 0.21], [0.88, 0.23], [-0.06, 0.69], [0.08, 1.03],
+      [1.04, 0.72], [1.10, 0.92], [0.72, 1.02],
     ];
     const mobile = width < 680;
     for (const [index, body] of bodies.entries()) {
-      body.homeX = (mobile ? mobileAnchors[index][0] : body.x) * width;
-      body.homeY = (mobile ? mobileAnchors[index][1] : body.y) * height;
-      body.offsetX = 0;
-      body.offsetY = 0;
-      body.vx = 0;
-      body.vy = 0;
+      if (!initialized || mobile !== previousMobile) {
+        body.x = (mobile ? mobileAnchors[index][0] : body.anchorX) * width;
+        body.y = (mobile ? mobileAnchors[index][1] : body.anchorY) * height;
+        if (!initialized) {
+          body.vx = [16, -11, 13, 8, -16, -12, 10][index];
+          body.vy = [7, 10, -9, -7, 12, -8, -11][index];
+          body.tiltVX = [0.13, -0.08, 0.1, -0.07, 0.08, -0.12, 0.09][index];
+          body.tiltVY = [-0.08, 0.11, -0.09, 0.06, -0.12, 0.09, -0.07][index];
+        }
+      } else {
+        body.x *= width / previousWidth;
+        body.y *= height / previousHeight;
+      }
       body.group.scale.setScalar(body.scale * (mobile ? 1.15 : width < 1000 ? 0.88 : 1));
-      body.group.visible = width < 1100;
-      onBodyVisibility(index, false);
       position(body);
     }
+    initialized = true;
+    previousMobile = mobile;
     renderer.render(scene, camera);
     canvas.dataset.rendered = "true";
     canvas.dataset.bodyCount = String(bodies.length);
@@ -232,25 +250,16 @@ export function mountHeroScene(hero, canvas, reducedMotion = false, onBodyVisibi
       pointer.vx *= drag;
       pointer.vy *= drag;
     }
-    bodies.forEach((body, index) => {
-      stepBody(body, pointer, dt);
+    bodies.forEach((body) => {
+      stepBody(body, pointer, dt, { width, height });
       position(body);
-      if (width >= 1100) {
-        const active = Math.hypot(body.offsetX, body.offsetY) > 3;
-        if (body.group.visible !== active) {
-          body.group.visible = active;
-          if (active) canvas.dataset.lastActivatedIndex = String(index);
-          onBodyVisibility(index, active);
-        }
-      }
-      body.group.rotation.x = body.rotation[0] + Math.sin(now * 0.00044 + index) * 0.055 - body.offsetY * 0.0009;
-      body.group.rotation.y = body.rotation[1] + Math.sin(now * 0.00031 + index * 1.5) * 0.09 + body.offsetX * 0.0011;
-      body.group.rotation.z = body.rotation[2] + Math.cos(now * 0.00037 + index) * 0.035;
+      body.group.rotation.set(body.tiltX, body.tiltY, body.angle);
     });
-    if (canvas.dataset.motionObserved !== "true" &&
-      bodies.some((body) => Math.hypot(body.offsetX, body.offsetY) > 4)) {
-      canvas.dataset.motionObserved = "true";
-    }
+    canvas.dataset.motionObserved = "true";
+    // Read-only inspection for browser regression checks; never affects motion.
+    canvas.heroMotionState = bodies.map(({ x, y, angle, group }) => ({
+      x, y, angle, scale: group.scale.x,
+    }));
     renderer.render(scene, camera);
   }
 
@@ -270,10 +279,6 @@ export function mountHeroScene(hero, canvas, reducedMotion = false, onBodyVisibi
       if (value) {
         cancelAnimationFrame(raf);
         onPointerLeave();
-        if (width >= 1100) bodies.forEach((body, index) => {
-          body.group.visible = false;
-          onBodyVisibility(index, false);
-        });
       } else {
         lastFrame = performance.now();
         raf = requestAnimationFrame(tick);

@@ -15,18 +15,16 @@ body.home-page{
   --muted:#4e5157;
   --line:#d4d6da;
   --accent:#105bfa;
-  --hero-reference-image:url("/assets/hero-light.png");
   background:#fff;
   color:var(--text);
   color-scheme:light;
-  transition:background-color .8s ease,color .8s ease;
+  transition:background-color 1.7s cubic-bezier(.22,1,.36,1),color 1.7s ease;
 }
 body.home-page[data-hero-theme="dark"]{
   --bg:#1b1c1e;
   --text:#f7f7f4;
   --muted:#c6c7cb;
   --line:#696b71;
-  --hero-reference-image:url("/assets/hero-dark.png");
   background:#1b1c1e;
   color-scheme:dark;
 }
@@ -36,7 +34,7 @@ body.home-page .nav{position:absolute;top:0;left:50%;transform:translateX(-50%);
 body.home-page .brand{font-size:1.7rem;font-weight:900;letter-spacing:-.075em}
 body.home-page .brand span{color:var(--accent);margin-left:0}
 body.home-page .nav nav{gap:clamp(1rem,2.3vw,2.6rem)}
-body.home-page .nav nav a{color:var(--text);font-size:1rem;font-weight:650;transition:color .8s ease}
+body.home-page .nav nav a{color:var(--text);font-size:1rem;font-weight:650;transition:color 1.7s ease}
 body.home-page .nav nav a:hover{color:var(--accent)}
 body.home-page main{width:100%;min-height:0;padding:0;overflow:hidden}
 body.home-page footer{border-color:var(--line);transition:border-color .8s ease}
@@ -50,7 +48,6 @@ body.home-page footer{border-color:var(--line);transition:border-color .8s ease}
   isolation:isolate;
 }
 #hero-3d{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
-.hero-reference{display:none}
 .hero-fallback{display:none}
 .home-hero.no-webgl .hero-fallback{display:block;position:absolute;inset:0;z-index:0;pointer-events:none}
 .hero-fallback i{position:absolute;display:block;width:180px;height:180px;border-radius:18px;box-shadow:inset -20px -25px 35px #0003,12px 24px 34px #0002;transform:rotate(-25deg)}
@@ -67,7 +64,7 @@ body.home-page footer{border-color:var(--line);transition:border-color .8s ease}
   transform:translate(-50%,-50%);
   text-align:center;
 }
-.hero-kicker{margin:0 0 1.35rem;color:var(--text);font-size:.96rem;font-weight:750;letter-spacing:.22em;text-transform:uppercase}
+.hero-kicker{margin:0 0 1.35rem;color:var(--text);font-size:.96rem;font-weight:750;letter-spacing:.22em;text-transform:uppercase;transition:color 1.7s ease}
 .hero-copy h1{
   margin:0;
   color:var(--text);
@@ -77,6 +74,7 @@ body.home-page footer{border-color:var(--line);transition:border-color .8s ease}
   line-height:.83;
   letter-spacing:-.085em;
   white-space:nowrap;
+  transition:color 1.7s ease;
 }
 .hero-subtitle{
   max-width:650px;
@@ -87,11 +85,12 @@ body.home-page footer{border-color:var(--line);transition:border-color .8s ease}
   letter-spacing:-.048em;
   line-height:1.13;
   text-wrap:balance;
+  transition:color 1.7s ease;
 }
 .hero-actions{display:flex;justify-content:center;gap:.9rem;flex-wrap:wrap;margin-top:2.2rem}
 .hero-actions .button{padding:.95rem 1.5rem;min-height:56px;border-radius:.65rem;font-size:1rem}
 .hero-actions .button:first-child{background:#105bfa;border-color:#105bfa;color:#fff}
-.hero-actions .button.secondary{background:transparent;border:1.5px solid var(--text);color:var(--text)}
+.hero-actions .button.secondary{background:transparent;border:1.5px solid var(--text);color:var(--text);transition:color 1.7s ease,border-color 1.7s ease,background-color .2s ease}
 .hero-actions .button.secondary:hover{background:var(--text);color:var(--bg)}
 .hero-bottom{position:absolute;z-index:1;left:50%;bottom:1.4rem;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:1.8rem;white-space:nowrap;color:var(--muted);font-size:.88rem}
 .hero-bottom p{margin:0}
@@ -109,30 +108,22 @@ body.home-page footer{border-color:var(--line);transition:border-color .8s ease}
 .home-end h2{margin:0 auto 2rem;font-size:clamp(3rem,6vw,6.7rem);line-height:1.02;letter-spacing:-.07em}
 .home-end .button{background:#105bfa;border-color:#105bfa;color:#fff;min-height:56px;padding:.9rem 1.5rem}
 
-/* The approved desktop renders are the source art. At rest this layer is an
-   exact responsive rendering of those pixels; on approach its seven isolated
-   image planes respond to the same spring physics as the WebGL fallback. */
+/* Keep typography and 3D objects live. No raster-to-mesh swap on hover. */
 @media(min-width:1100px){
-  #hero-3d{z-index:2}
-  .home-hero.no-reference .hero-reference{display:none}
-  .home-hero.no-reference .hero-copy,body.home-page:has(.no-reference) .nav{opacity:1}
-  .hero-reference,.hero-reference-erase,.hero-reference-piece{position:absolute;inset:0}
-  .hero-reference{display:block;z-index:1;background-image:var(--hero-reference-image);background-size:100% 100%;pointer-events:none}
-  .hero-reference-erase,.hero-reference-piece{opacity:0;pointer-events:none}
-  .hero-reference-erase{background:var(--bg);filter:blur(8px)}
-  .hero-reference-piece{background-image:var(--hero-reference-image);background-size:100% 100%;will-change:transform}
-  body.home-page .nav{left:53.5%;width:38.5vw;max-width:none;gap:0;opacity:0}
+  #hero-3d{z-index:1}
+  body.home-page .nav{left:53.5%;width:38.5vw;max-width:none;gap:0}
   body.home-page .brand{display:none}
   body.home-page .nav nav{gap:2.8vw}
   body.home-page .nav-cta{width:8.8vw;min-height:50px;padding:0}
-  .hero-copy{z-index:3;opacity:0;pointer-events:none}
-  .hero-copy .hero-actions{pointer-events:auto}
-  .hero-actions{gap:18px;transform:translateY(17px)}
+  .hero-copy{z-index:2;top:50%;width:min(1120px,calc(100% - 3rem))}
+  .hero-kicker{font-size:clamp(.75rem,1vw,1rem);font-weight:600;letter-spacing:.38em;margin-bottom:1.45rem}
+  .hero-copy h1{font-size:clamp(8rem,14.5vw,14.6rem);line-height:.88;letter-spacing:-.075em;transform:scaleX(.91)}
+  .hero-subtitle{font-size:clamp(2.3rem,3.85vw,3.85rem);margin-top:1.05rem;line-height:1.02;letter-spacing:-.055em}
+  .hero-actions{gap:18px;margin-top:2.2rem}
   .hero-actions .button:first-child{min-width:252px}
   .hero-actions .button.secondary{min-width:218px}
   .hero-actions .button{min-height:70px}
-  .hero-bottom{opacity:0}
-  .hero-bottom:focus-within{opacity:1}
+  .hero-bottom{opacity:.68}
 }
 
 @media(max-width:1000px){
@@ -157,6 +148,7 @@ body.home-page footer{border-color:var(--line);transition:border-color .8s ease}
   .hero-actions .button{min-height:47px;padding:.65rem .8rem;font-size:.84rem}
   .hero-bottom{bottom:4.2rem;font-size:.72rem;gap:.7rem}
   .hero-bottom button{font-size:.72rem}
+  .hero-bottom p{display:none}
   .home-story{width:calc(100% - 2rem);padding:6rem 0}
   .home-story h2{font-size:clamp(2.5rem,10vw,4rem);margin-bottom:3.5rem}
   .story-lines{grid-template-columns:1fr;gap:2rem}
@@ -164,5 +156,6 @@ body.home-page footer{border-color:var(--line);transition:border-color .8s ease}
 }
 @media(prefers-reduced-motion:reduce){
   body.home-page{transition:none}
+  .hero-kicker,.hero-copy h1,.hero-subtitle,.hero-actions .button.secondary,body.home-page .nav nav a{transition:none}
   .hero-actions .button,.nav-cta{transition:none}
 }

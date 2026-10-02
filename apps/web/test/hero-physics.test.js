@@ -19,29 +19,46 @@ test("a cursor outside the interaction radius has no effect", () => {
   );
 });
 
-test("spring returns a displaced object toward home and clamps long frames", () => {
-  const body = { homeX: 100, homeY: 100, offsetX: 70, offsetY: 0, vx: 0, vy: 0, radius: 150 };
-  stepBody(body, { active: false }, 30);
-  assert.ok(body.offsetX < 70);
-  for (let i = 0; i < 240; i += 1) stepBody(body, { active: false }, 1 / 60);
-  assert.ok(Math.abs(body.offsetX) < 0.01);
+test("an exact-center hit follows cursor motion instead of jumping upward", () => {
+  const force = repulsionAcceleration(
+    { active: true, x: 100, y: 100, vx: 900, vy: 0 }, 100, 100, 150,
+  );
+  assert.ok(force.x > 0);
+  assert.equal(force.y, 0);
 });
 
-test("repulsion stays within the displacement cap", () => {
-  const body = { homeX: 100, homeY: 100, offsetX: 0, offsetY: 0, vx: 0, vy: 0, radius: 200 };
+const makeBody = (mass = 1) => ({
+  x: 100, y: 100, vx: 0, vy: 0, radius: 180, mass,
+  spin: 0.1, angle: 0, tiltX: 0, tiltY: 0, tiltVX: 0.07, tiltVY: -0.05,
+});
+
+test("free-flight retains momentum and rotation instead of returning home", () => {
+  const body = makeBody();
+  body.vx = 80;
+  stepBody(body, { active: false }, 30);
+  const firstX = body.x;
+  for (let i = 0; i < 60; i += 1) stepBody(body, { active: false }, 1 / 60);
+  assert.ok(body.x > firstX + 60);
+  assert.ok(body.angle > 0);
+  assert.ok(body.tiltX > 0);
+});
+
+test("repulsion pushes away and motion stays within finite hero bounds", () => {
+  const body = makeBody();
+  body.radius = 200;
   const pointer = { active: true, x: 90, y: 100, vx: 1800, vy: 0 };
-  for (let i = 0; i < 300; i += 1) stepBody(body, pointer, 1 / 60);
-  assert.ok(Math.hypot(body.offsetX, body.offsetY) <= 145.000001);
+  stepBody(body, pointer, 1 / 60, { width: 300, height: 200 });
+  assert.ok(body.x > 100);
+  for (let i = 0; i < 1000; i += 1) stepBody(body, { active: false }, 1 / 60,
+    { width: 300, height: 200 });
+  assert.ok(body.x >= 0 && body.x <= 300);
 });
 
 test("a lighter object accelerates more than a heavier one", () => {
-  const makeBody = (mass) => ({
-    homeX: 100, homeY: 100, offsetX: 0, offsetY: 0, vx: 0, vy: 0, radius: 180, mass,
-  });
   const light = makeBody(0.5);
   const heavy = makeBody(3);
   const pointer = { active: true, x: 50, y: 100, vx: 500, vy: 0 };
   stepBody(light, pointer, 1 / 60);
   stepBody(heavy, pointer, 1 / 60);
-  assert.ok(light.offsetX > heavy.offsetX);
+  assert.ok(light.x > heavy.x);
 });

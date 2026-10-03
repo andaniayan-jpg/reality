@@ -1,5 +1,9 @@
 # Roadmap
 
+The immediate, gated AI preview milestone is specified in
+[NEXT_RELEASE.md](NEXT_RELEASE.md). It does not redefine the historical
+geometry roadmap below or imply that v3/v4 are complete.
+
 ## 0.1 — foundation and graph
 
 - Typed core data model and deterministic AABB spatial queries

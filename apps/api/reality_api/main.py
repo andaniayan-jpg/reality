@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 import json
 import secrets
 import tempfile
@@ -27,9 +29,16 @@ from fastapi.responses import JSONResponse, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from reality._providers.base import MAX_CLOUD_IMAGE_BYTES, AITask, AIUnavailableError
+from reality._providers.configured import online_router_from_env
+from reality._providers.openai_compatible import _image_mime
+
+from .ai_usage import AIQuotaExceeded, current_day, record_ai_output, reserve_ai_request
+from .body_limit import AIRequestBodyLimit
 from .config import Settings
 from .database import (
     Account,
+    AIDailyUsage,
     ApiKey,
     Database,
     FileRecord,
@@ -42,7 +51,10 @@ from .phone import PhoneVerificationError, TwilioPhoneVerifier
 from .schemas import (
     AccountCreate,
     AccountResponse,
+    AIUsageResponse,
     ConvertRequest,
+    CopilotRequest,
+    CopilotResponse,
     EditRequest,
     ErrorBody,
     FileResponse,
@@ -53,6 +65,7 @@ from .schemas import (
     Login,
     MeasureRequest,
     PartReference,
+    PerceiveRequest,
     PhoneCheck,
     PhoneStart,
     PhoneStartResponse,
@@ -121,6 +134,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = configured
     app.state.database = database
     app.state.storage = storage
+    app.state.ai_router = None  # Optional test/deployment injection; no process-local job state.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(configured.cors_origins),
@@ -128,6 +142,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_methods=["GET", "POST", "DELETE"],
         allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-Request-Id"],
     )
+    app.add_middleware(AIRequestBodyLimit, max_bytes=configured.ai_max_request_bytes)
 
     @app.middleware("http")
     async def request_id(request: Request, call_next: Callable[..., Any]) -> Response:
@@ -266,6 +281,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     def require_scope(scope: str) -> Callable[[Principal], Principal]:
         def check(principal: Principal = Depends(principal_dependency)) -> Principal:
+            if scope == "ai:use":
+                if not configured.ai_enabled:
+                    raise HTTPException(503, "AI service is not enabled")
+                if (
+                    configured.environment == "production"
+                    and principal.account.id not in configured.ai_allowed_account_ids
+                ):
+                    raise HTTPException(403, "AI access is not enabled for this account")
             if principal.key is None:
                 return principal
             scopes = json.loads(principal.key.scopes_json)
@@ -465,6 +488,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         principal: Principal = Depends(account_dependency),
         session: Session = Depends(session_dependency),
     ) -> KeyReveal:
+        if "ai:use" in payload.scopes:
+            if not configured.ai_enabled:
+                raise HTTPException(403, "AI access is not enabled")
+            if (
+                configured.environment == "production"
+                and principal.account.id not in configured.ai_allowed_account_ids
+            ):
+                raise HTTPException(403, "AI access is not enabled for this account")
         raw_key, prefix = new_api_key(payload.environment)
         key = ApiKey(
             owner_id=principal.account.id,
@@ -888,6 +919,120 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if converted.size_bytes <= configured.sync_analysis_bytes:
             background.add_task(_background_process, database, storage, configured, job.id)
         return FileResponse(**file_view(converted))
+
+    @app.post(
+        "/v1/ai/copilot",
+        response_model=CopilotResponse,
+        responses={
+            401: {"model": ErrorBody},
+            403: {"model": ErrorBody},
+            413: {"model": ErrorBody},
+            429: {"model": ErrorBody},
+            503: {"model": ErrorBody},
+        },
+        tags=["ai"],
+    )
+    def ai_copilot(
+        payload: CopilotRequest,
+        principal: Principal = Depends(require_scope("ai:use")),
+        session: Session = Depends(session_dependency),
+    ) -> CopilotResponse:
+        try:
+            router = app.state.ai_router or online_router_from_env()
+        except AIUnavailableError as error:
+            raise HTTPException(503, "AI service is unavailable") from error
+        try:
+            day = reserve_ai_request(
+                session,
+                owner_id=principal.account.id,
+                limit=configured.ai_daily_request_limit,
+                prompt_chars=len(payload.prompt),
+                image_bytes=0,
+            )
+        except AIQuotaExceeded as error:
+            raise HTTPException(429, "daily AI request allowance exhausted") from error
+        try:
+            answer = router.route(
+                AITask(
+                    prompt=payload.prompt,
+                    complexity=payload.complexity,
+                    realtime=payload.realtime,
+                ),
+                mode="online",
+            )
+        except AIUnavailableError as error:
+            raise HTTPException(503, "AI service is unavailable") from error
+        record_ai_output(session, owner_id=principal.account.id, day=day, chars=len(answer.text))
+        return CopilotResponse(text=answer.text)
+
+    @app.post(
+        "/v1/ai/perceive",
+        response_model=CopilotResponse,
+        responses={
+            401: {"model": ErrorBody},
+            403: {"model": ErrorBody},
+            413: {"model": ErrorBody},
+            422: {"model": ErrorBody},
+            429: {"model": ErrorBody},
+            503: {"model": ErrorBody},
+        },
+        tags=["ai"],
+    )
+    def ai_perceive(
+        payload: PerceiveRequest,
+        principal: Principal = Depends(require_scope("ai:use")),
+        session: Session = Depends(session_dependency),
+    ) -> CopilotResponse:
+        try:
+            image = base64.b64decode(payload.image_base64, validate=True)
+        except (ValueError, binascii.Error) as error:
+            raise HTTPException(422, "invalid image encoding") from error
+        if len(image) > MAX_CLOUD_IMAGE_BYTES:
+            raise HTTPException(413, "image exceeds the 8 MiB limit")
+        try:
+            actual_mime = _image_mime(image)
+        except AIUnavailableError as error:
+            raise HTTPException(422, "unsupported image content") from error
+        if actual_mime != payload.mime_type:
+            raise HTTPException(422, "image content does not match MIME type")
+        try:
+            router = app.state.ai_router or online_router_from_env()
+        except AIUnavailableError as error:
+            raise HTTPException(503, "AI service is unavailable") from error
+        try:
+            day = reserve_ai_request(
+                session,
+                owner_id=principal.account.id,
+                limit=configured.ai_daily_request_limit,
+                prompt_chars=len(payload.prompt),
+                image_bytes=len(image),
+            )
+        except AIQuotaExceeded as error:
+            raise HTTPException(429, "daily AI request allowance exhausted") from error
+        try:
+            answer = router.route(
+                AITask(prompt=payload.prompt, kind="vision", image=image), mode="online"
+            )
+        except AIUnavailableError as error:
+            raise HTTPException(503, "AI service is unavailable") from error
+        record_ai_output(session, owner_id=principal.account.id, day=day, chars=len(answer.text))
+        return CopilotResponse(text=answer.text)
+
+    @app.get("/v1/ai/usage", response_model=AIUsageResponse, responses=ERROR_RESPONSES, tags=["ai"])
+    def ai_usage(
+        principal: Principal = Depends(require_scope("ai:use")),
+        session: Session = Depends(session_dependency),
+    ) -> AIUsageResponse:
+        day = current_day()
+        usage = session.get(AIDailyUsage, (principal.account.id, day))
+        return AIUsageResponse(
+            day=day,
+            request_count=usage.request_count if usage else 0,
+            daily_limit=configured.ai_daily_request_limit,
+            prompt_chars=usage.prompt_chars if usage else 0,
+            image_bytes=usage.image_bytes if usage else 0,
+            output_chars=usage.output_chars if usage else 0,
+        )
 
     @app.get("/v1/usage", response_model=UsageResponse, tags=["dashboard"])
     def get_usage(

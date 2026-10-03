@@ -2,6 +2,31 @@
 
 `reality` is a small, typed foundation for treating a physical 3D scene as a Python object. It loads common mesh formats today and exposes deterministic spatial queries without committing the public API to a physics or rendering engine.
 
+## Optional AI runtime foundation
+
+The package now includes a provider-neutral `reality.copilot()` text entry point,
+`reality.perceive.from_image()`, hardware inspection, local model discovery, and
+an injectable model router. These are separate from Reality's authoritative
+geometry/physics queries; generated text is never presented as a measured fact.
+
+```python
+import reality
+
+print(reality.detect_mode())       # local unless an API key is configured
+print(reality.local_setup_plan())  # inspection only; installs nothing
+answer = reality.copilot("Explain how to measure this assembly")
+print(answer.text)
+```
+
+`copilot()` needs an already running local Ollama engine with a compatible
+installed model, or a deployed Reality AI gateway configured with
+`REALITY_API_BASE` and `REALITY_API_KEY`. There is no public AI gateway in this
+repository, and `pip install reality` does not install a model or guarantee an
+answer. See [AI runtime guide](docs/ai-runtime.md) for exact setup, adapters,
+security, and current gaps. The [next-release plan](NEXT_RELEASE.md) gives
+explicit pass/fail gates for a real cloud AI preview. The existing geometry
+APIs work without AI.
+
 ## Reality Cloud developer platform
 
 `apps/api` adds a FastAPI service that invokes this package for hosted model

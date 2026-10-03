@@ -21,6 +21,22 @@ Every file/model query resolves through the authenticated owner ID. A missing re
 
 The rate limiter records API-key activity in the shared database, rather than process memory, so it works across API replicas. Request and audit records include a request ID without recording raw API keys or model contents.
 
+AI text and image routes require the separate `ai:use` scope. A shared
+PostgreSQL/SQLite daily allowance reserves requests atomically per account,
+so issuing another key does not reset the limit. Revoked keys cannot call the
+routes. Production AI is disabled by default and requires an account-ID
+allowlist; unapproved accounts cannot grant themselves `ai:use` or bypass it
+with a dashboard cookie. An ASGI body limit rejects oversized JSON before parser allocation,
+including chunked requests; image bytes, encoding, and MIME are then checked
+before provider routing. The usage table stores counts and byte/character
+sizes, not prompt text or image bytes. Provider keys are read only from the
+API service environment, never returned to clients or included in the wheel.
+External providers do receive submitted text/images for inference when the
+gateway is configured; do not describe cloud calls as private/offline. Exact
+provider retention terms and billed usage require validation before public
+deployment. No customer uploads are used for model training without explicit
+opt-in.
+
 ## Upload and processing safety
 
 The API enforces a byte quota, request upload limit, extension allow-list, content type allow-list, and basic magic/content checks before storage. The worker then calls `reality.open()` with the same size limit; Reality validates format content and rejects unsafe glTF URI traversal.

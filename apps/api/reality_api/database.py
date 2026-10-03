@@ -130,6 +130,19 @@ class RequestLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
 
 
+class AIDailyUsage(Base):
+    """UTC-day reservations shared by all API replicas for one account."""
+
+    __tablename__ = "ai_daily_usage"
+
+    owner_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), primary_key=True)
+    day: Mapped[str] = mapped_column(String(10), primary_key=True)
+    request_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    prompt_chars: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    image_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    output_chars: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
 

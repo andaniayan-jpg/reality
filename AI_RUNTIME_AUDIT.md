@@ -28,8 +28,6 @@ or the requested zero-setup AI experience is complete.
 - PostgreSQL 16 applied migrations 001–004 in order in a disposable,
   network-isolated container; `ai_daily_usage` had the expected six columns.
   The container was stopped and auto-removed after the check.
-- Eleven website physics tests passed by direct Node execution. The `npm test`
-  wrapper could not spawn the Node test subprocess in this sandbox (`EPERM`).
 
 ## Current machine
 

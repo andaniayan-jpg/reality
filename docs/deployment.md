@@ -19,7 +19,7 @@ docker compose up --build
 
 The API is at `http://localhost:8000`; the dashboard is at `http://localhost:3000`. Run
 `apps/api/migrations/001_initial.sql`, `002_model_versions.sql`, and
-`003_phone_auth.sql` in order before the first
+`003_phone_auth.sql`, and `004_ai_usage.sql` in order before the first
 production rollout. Local development uses SQLite through the same SQLAlchemy repository
 interface.
 
@@ -35,6 +35,37 @@ Apply the PostgreSQL migration to existing deployments before starting the
 updated API. Existing local SQLite databases need an explicit schema migration
 or a new disposable development database; startup reports the missing schema
 instead of serving requests against incompatible tables.
+
+## Optional AI gateway
+
+Set provider credentials only on the API service using the
+`REALITY_GEMINI_API_KEY`, `REALITY_GROQ_API_KEY`, `REALITY_NIM_API_KEY`, and/or
+`REALITY_OPENROUTER_API_KEY` environment variables. NVIDIA agent routing also
+requires an explicitly verified `REALITY_NIM_AGENT_MODEL`. The dashboard and
+client bundles must never receive these secrets. API keys need the explicit
+`ai:use` scope for `/v1/ai/copilot`, `/v1/ai/perceive`, and `/v1/ai/usage`.
+Production AI is **off by default**. Set `REALITY_AI_ENABLED=true` and
+`REALITY_AI_ALLOWED_ACCOUNT_IDS` to a comma-separated list of approved
+account IDs (available from `/v1/me`) before adding provider keys. Startup
+fails closed if AI is enabled in production without an allowlist. Unapproved
+users cannot self-issue an `ai:use` key or call AI through a dashboard
+session. This is a controlled-preview entitlement boundary, not a billing
+system; public self-service access needs a persisted entitlement and payment
+policy before the allowlist can be removed.
+
+`REALITY_AI_DAILY_REQUEST_LIMIT` defaults to 100 calls per account and UTC
+day. Reservations are atomic in the shared database across API replicas;
+failed upstream calls still consume one reservation. The API records prompt,
+image, and output *sizes*, not customer prompt or image content. The request
+body cap defaults to 12 MiB and applies before JSON parsing, including
+chunked requests. The client and server also enforce an 8 MiB image cap and
+adapters cap generated output at 1,024 tokens. These are request bounds, **not
+exact currency or token billing**. Production pricing/usage reconciliation
+requires live provider response validation and a separate billing control.
+
+Put a matching request-body limit and connection timeout at the ingress proxy;
+do not rely on the application as the only protection. This repository has no
+public AI gateway deployment or live-provider audit yet.
 
 ## Scale-out model
 

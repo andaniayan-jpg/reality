@@ -28,6 +28,35 @@ dashboard session cookie as email login. A missing SMS configuration returns
 These endpoints require real Twilio credentials to deliver a code. There is no
 development backdoor that accepts a fixed code.
 
+## Optional AI copilot gateway
+
+`POST /v1/ai/copilot` accepts a short text prompt, `complexity` (`fast`,
+`deep`, or `agent`), and `realtime` (boolean). The response is generated text,
+not a Reality measurement. A key must be created with the explicit `ai:use`
+scope; ordinary model keys cannot call it. The API uses server-side provider
+environment variables documented in [AI runtime](ai-runtime.md). Without
+configured credentials the route returns `503`; this repository does not
+claim a deployed public model gateway or live model validation.
+
+```bash
+curl http://localhost:8000/v1/ai/copilot \
+  -H "Authorization: Bearer $REALITY_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt":"Explain how to inspect assembly clearance","complexity":"fast"}'
+```
+
+The Python package uses this endpoint only when `REALITY_API_KEY` and
+`REALITY_API_BASE` are set. Provider credentials never go to the client.
+`POST /v1/ai/perceive` uses the same scope and returns the same text schema;
+it accepts an `image_base64` payload with `mime_type` of PNG, JPEG, or WebP
+and rejects image bytes above 8 MiB. This is image question answering, not
+CAD topology reconstruction or a physics measurement. Configure a reverse
+proxy request-body cap before public deployment.
+`GET /v1/ai/usage` returns the account's UTC-day request count, configured
+daily limit, and coarse prompt/image/output sizes. These are not billed token
+or currency totals. Calls past the daily limit return `429` before a provider
+is invoked.
+
 ## Files and jobs
 
 | Endpoint | Description |

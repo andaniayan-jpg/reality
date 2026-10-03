@@ -31,6 +31,10 @@ from ._batch import (
 )
 from ._branch import WorldBranch
 from ._bridge import BridgeRequestError, RealityBridge, serve_jsonl
+from ._core.auth import detect_mode, login, logout
+from ._core.detector import HardwareProfile, detect_hardware
+from ._core.installer import LocalSetupPlan, local_setup_plan
+from ._core.router import ModelRouter
 from ._editing import EditOperation, EditOperationError, EditResult, EditSession, EditValidation
 from ._explore import ExplorationResult, PositionSearchChange, position
 from ._file_model import (
@@ -65,6 +69,13 @@ from ._physics import (
     UnsupportedPhysicsOperationError,
 )
 from ._provenance import ProvenanceEntry, WorldLedger, WorldProvenance, provenance_for
+from ._providers.base import (
+    AIResponse,
+    AITask,
+    AIUnavailableError,
+    Provider,
+    RetryableProviderError,
+)
 from ._state import (
     Change,
     ChangeSet,
@@ -101,6 +112,8 @@ from .integrations import (
     register_addon,
     unregister_addon,
 )
+from .layers import perceive
+from .layers.copilot import copilot
 from .predicates import (
     Condition,
     Objective,
@@ -115,6 +128,21 @@ from .predicates import (
 
 __all__ = [
     "__version__",
+    "AIResponse",
+    "AITask",
+    "AIUnavailableError",
+    "HardwareProfile",
+    "LocalSetupPlan",
+    "ModelRouter",
+    "Provider",
+    "RetryableProviderError",
+    "copilot",
+    "detect_hardware",
+    "detect_mode",
+    "local_setup_plan",
+    "login",
+    "logout",
+    "perceive",
     "AmbiguousObjectError",
     "AccelerationUnavailableError",
     "AgentAction",

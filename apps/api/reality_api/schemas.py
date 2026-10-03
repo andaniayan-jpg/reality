@@ -7,6 +7,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from reality._providers.base import MAX_CLOUD_IMAGE_BYTES
+
 
 class APIModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -66,6 +68,32 @@ class KeyResponse(APIModel):
 
 class KeyReveal(KeyResponse):
     key: str = Field(description="Only returned at creation or rotation time.")
+
+
+class CopilotRequest(APIModel):
+    prompt: str = Field(min_length=1, max_length=4000)
+    complexity: Literal["fast", "deep", "agent"] = "fast"
+    realtime: bool = False
+
+
+class CopilotResponse(APIModel):
+    text: str
+    mode: Literal["online"] = "online"
+
+
+class PerceiveRequest(APIModel):
+    prompt: str = Field(min_length=1, max_length=4000)
+    mime_type: Literal["image/png", "image/jpeg", "image/webp"]
+    image_base64: str = Field(min_length=1, max_length=4 * ((MAX_CLOUD_IMAGE_BYTES + 2) // 3))
+
+
+class AIUsageResponse(APIModel):
+    day: str
+    request_count: int
+    daily_limit: int
+    prompt_chars: int
+    image_bytes: int
+    output_chars: int
 
 
 class FileResponse(APIModel):

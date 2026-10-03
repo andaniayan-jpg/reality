@@ -11,6 +11,23 @@ permissions:
   contents: read
 
 jobs:
+  postgres-migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start isolated PostgreSQL 16
+        run: docker run --rm --network none --name reality-ci-postgres -e POSTGRES_PASSWORD=test-only-ci-password -d postgres:16-alpine
+      - name: Apply and verify all migrations
+        run: |
+          timeout 60s bash -c 'until docker exec reality-ci-postgres pg_isready -U postgres; do sleep 1; done'
+          for migration in apps/api/migrations/*.sql; do
+            docker exec -i reality-ci-postgres psql -U postgres -v ON_ERROR_STOP=1 < "$migration"
+          done
+          docker exec reality-ci-postgres psql -U postgres -Atc "SELECT COUNT(*) FROM information_schema.columns WHERE table_name='ai_daily_usage'" | grep -qx 6
+      - name: Stop PostgreSQL
+        if: always()
+        run: docker stop reality-ci-postgres || true
+
   web:
     runs-on: ubuntu-latest
     defaults:

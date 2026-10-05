@@ -21,6 +21,11 @@ print(reply.text)
 
 # PNG, JPEG, or WebP (at most 20 MiB):
 description = reality.perceive.from_image("frame.png")
+capture = reality.reality.capture(source="frame.png")  # same file-only analysis
+
+# After `pip install "reality[video]"`:
+observations = reality.twin.from_video("scan.mp4")
+print(observations.sampled_frames)
 ```
 
 `reality.login(api_key)` holds an existing Reality key in process memory for
@@ -34,12 +39,16 @@ or logs. Use the hosted API only after a real gateway is deployed.
 
 The default local transport connects only to `127.0.0.1:11434`. It lists models
 through `/api/tags` and sends inference to `/api/chat`. Model selection uses
-only models actually installed. For text it prefers `qwen3:14b`, then
-`phi4:mini`; for images it prefers `qwen2-vl:7b`. The hardware plan's RAM-based
-recommendation is an estimate, not proof that a model fits or runs fast.
-`REALITY_LOCAL_MODEL` and `REALITY_LOCAL_VISION_MODEL` allow choosing another
-*already installed* compatible model. A custom `Provider` can also be passed
-through `ModelRouter`.
+only models actually installed. The new feature-specific route requires the
+configured local reasoning model for `copilot`, the fast local model for
+real-time requests, and the coding model for generation requests; it does not
+silently substitute a smaller text model. Vision uses the cloud vision adapter
+when configured and falls back to an installed local vision model. The older
+injectable `ModelRouter.route()` behavior is retained for compatibility;
+its `REALITY_LOCAL_MODEL` and `REALITY_LOCAL_VISION_MODEL` overrides apply only
+to that legacy route. The hardware plan's RAM-based recommendation is an
+estimate, not proof that a model fits or runs fast. A custom `Provider` can
+also be passed through `ModelRouter`.
 
 `pip install reality` never downloads an executable, launches a background
 service, pulls multi-gigabyte weights, or grants installer permissions.
@@ -64,11 +73,16 @@ Production gateway access is disabled by default and requires an approved
 account ID as well as explicit server-side enablement; possessing a generic
 Reality API key does not activate paid AI access.
 
-Trusted server code configures `REALITY_GEMINI_API_KEY`,
+Trusted server code configures `REALITY_GEMINI_API_KEY` (or `GEMINI_API_KEY`),
 `REALITY_GROQ_API_KEY`, `REALITY_NIM_API_KEY`, and/or
 `REALITY_OPENROUTER_API_KEY`; the gateway creates the matching adapters for
 each request. Their HTTPS wire shapes, access scope, fail-closed behavior, and
-fallback are tested, but no live provider account was used. The existing API
+fallback are tested. A configured image key also enables direct package vision
+when no Reality Cloud key is present; this transmits the image to Google's
+service. Without the key, image analysis needs a running local engine with a
+compatible installed vision model. A failed cloud image call can fall back to
+that local model; if neither works, Reality reports an error rather than
+inventing a scene. The existing API
 applies persistent per-key request-rate limits and request logs; production
 AI-specific token/cost quotas and load tests still need work before deployment.
 Provider keys must remain server-side. NVIDIA NIM model selection requires an
@@ -81,8 +95,16 @@ input. No provider can promise zero rate-limit errors or uninterrupted service.
 - Automatic engine installation or model download.
 - Public deployment of the AI gateway, signup/device login, provider
   credentials, and production AI-specific cost controls.
-- Camera capture, desktop/Blender integration, and the proposed `reason`,
-  `simulate`, `generate`, `twin`, and `agents` AI layers.
+- Camera/webcam/live-frame capture is intentionally out of scope. The file-only
+  capture alias returns `AIResponse`, not an exact geometric `World`.
+- `twin.from_video()` validates an MP4 up to 100 MiB, uses a 60-second bounded
+  decoder process to sample at most four frames, and returns typed
+  `VideoObservations`. Install the optional `video` extra for its decoder. The
+  original video stays local; extracted images may be sent to the configured
+  cloud vision service. It does not build a 3D digital twin or predict physics.
+- The proposed `reason`, `simulate`, `generate`, and `agents` AI public layers,
+  plus digital-twin prediction, remain unimplemented. Their internal routing
+  map is defined and tested but is not evidence that the layers exist.
 - Live model quality, latency, and cross-provider parity validation.
 
 These are future milestones; their absence does not affect the existing

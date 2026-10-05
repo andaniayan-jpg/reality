@@ -5,7 +5,8 @@
 ## Optional AI runtime foundation
 
 The package now includes a provider-neutral `reality.copilot()` text entry point,
-`reality.perceive.from_image()`, hardware inspection, local model discovery, and
+`reality.perceive.from_image()`, file-only `reality.reality.capture()`, bounded
+`reality.twin.from_video()`, hardware inspection, local model discovery, and
 an injectable model router. These are separate from Reality's authoritative
 geometry/physics queries; generated text is never presented as a measured fact.
 
@@ -16,13 +17,22 @@ print(reality.detect_mode())       # local unless an API key is configured
 print(reality.local_setup_plan())  # inspection only; installs nothing
 answer = reality.copilot("Explain how to measure this assembly")
 print(answer.text)
+
+image = reality.perceive.from_image("photo.jpg")
+capture = reality.reality.capture(source="photo.jpg")
+# Video support uses an optional decoder: pip install "reality[video]"
+observations = reality.twin.from_video("scan.mp4")
 ```
 
 `copilot()` needs an already running local Ollama engine with a compatible
 installed model, or a deployed Reality AI gateway configured with
 `REALITY_API_BASE` and `REALITY_API_KEY`. There is no public AI gateway in this
 repository, and `pip install reality` does not install a model or guarantee an
-answer. See [AI runtime guide](docs/ai-runtime.md) for exact setup, adapters,
+answer. Image analysis uses the configured cloud vision provider when available,
+then an installed local vision model; photos can provide observations, not
+measured masses or an exact 3D world. Video currently samples at most four
+frames and returns observations, not a geometric digital twin. There is no
+webcam or live frame capture. See [AI runtime guide](docs/ai-runtime.md) for setup, adapters,
 security, and current gaps. The [next-release plan](NEXT_RELEASE.md) gives
 explicit pass/fail gates for a real cloud AI preview. The existing geometry
 APIs work without AI.

@@ -7,8 +7,9 @@ from typing import Literal
 
 from reality._core.auth import detect_mode
 from reality._core.router import ModelRouter
-from reality._providers.base import AIResponse, AITask, AIUnavailableError
+from reality._providers.base import AIResponse, AITask, AIUnavailableError, Provider
 from reality._providers.cloud import CloudProvider
+from reality._providers.gemini import GeminiProvider
 from reality._providers.ollama import OllamaProvider
 
 
@@ -22,7 +23,15 @@ def _default_router() -> ModelRouter:
             )
         return ModelRouter({"cloud": CloudProvider(base)})
     local = OllamaProvider()
-    return ModelRouter({"local": local}, local_models=local.available_models())
+    try:
+        models = local.available_models()
+    except AIUnavailableError:
+        models = ()
+    providers: dict[str, Provider] = {"local": local}
+    vision_key = os.getenv("REALITY_GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
+    if vision_key:
+        providers["gemini"] = GeminiProvider(vision_key)
+    return ModelRouter(providers, local_models=models)
 
 
 def copilot(
@@ -34,4 +43,7 @@ def copilot(
 ) -> AIResponse:
     """Ask a model for guidance; never treat its text as measured physics."""
     task = AITask(prompt=prompt, complexity=complexity, realtime=realtime)
-    return (router or _default_router()).route(task)
+    selected = router or _default_router()
+    if router is not None or detect_mode() == "online":
+        return selected.route(task)
+    return selected.route_feature("copilot", task)

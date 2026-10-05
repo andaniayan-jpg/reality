@@ -18,6 +18,60 @@ from .auth import detect_mode
 
 Mode = Literal["local", "online"]
 
+# Internal policy only. Model identifiers are deliberately absent from public
+# responses, but provider/data-transfer behavior is documented for users.
+Feature = Literal[
+    "copilot",
+    "reason.predict",
+    "reason.forces",
+    "reason.cascade",
+    "simulate.world",
+    "simulate.stream",
+    "generate.object",
+    "generate.scene",
+    "twin.predict",
+    "twin.anomalies",
+    "twin.from_video",
+    "agents.spawn",
+    "agents.train",
+    "perceive.from_image",
+    "capture.from_image",
+]
+
+_VISION_FEATURES: frozenset[Feature] = frozenset(
+    {"perceive.from_image", "capture.from_image", "twin.from_video"}
+)
+_FAST_FEATURES: frozenset[Feature] = frozenset({"simulate.stream"})
+_CODER_FEATURES: frozenset[Feature] = frozenset({"generate.object"})
+_TEXT_FEATURES: frozenset[Feature] = frozenset(
+    {
+        "copilot",
+        "reason.predict",
+        "reason.forces",
+        "reason.cascade",
+        "simulate.world",
+        "simulate.stream",
+        "generate.object",
+        "generate.scene",
+        "twin.predict",
+        "twin.anomalies",
+        "agents.spawn",
+        "agents.train",
+    }
+)
+
+
+def _local_feature_model(feature: Feature, *, realtime: bool) -> str:
+    if realtime or feature in _FAST_FEATURES:
+        return "phi4:mini"
+    if feature in _CODER_FEATURES:
+        return "deepseek-coder-v2"
+    return "qwen3:14b"
+
+
+def _installed_model(wanted: str, installed: tuple[str, ...]) -> str | None:
+    return next((model for model in installed if model in {wanted, f"{wanted}:latest"}), None)
+
 
 def select_local_model(task: AITask, installed: tuple[str, ...]) -> str:
     """Only select a model the user has already installed."""
@@ -42,6 +96,57 @@ class ModelRouter:
     ) -> None:
         self.providers = dict(providers)
         self.local_models = local_models
+
+    def route_feature(self, feature: Feature, task: AITask) -> AIResponse:
+        """Apply the explicit local-first feature map without implicit downloads.
+
+        Vision alone may use the configured cloud vision provider. Missing or
+        failing cloud vision falls back to an *installed* local vision model.
+        If neither path works, fail honestly rather than fabricate a scene.
+        """
+        if feature not in _VISION_FEATURES | _TEXT_FEATURES:
+            raise ValueError("unsupported AI feature")
+        if task.kind == "vision":
+            cloud = self.providers.get("gemini")
+            if cloud is not None:
+                try:
+                    answer = cloud.complete(task, model="gemini-2.5-flash")
+                    if answer.strip():
+                        return AIResponse(text=answer, mode="online")
+                except (AIUnavailableError, RetryableProviderError):
+                    pass
+            local = self.providers.get("local")
+            for wanted in ("qwen2-vl:7b", "llava:7b"):
+                model = _installed_model(wanted, self.local_models)
+                if local is None or model is None:
+                    continue
+                try:
+                    answer = local.complete(task, model=model)
+                    if answer.strip():
+                        return AIResponse(text=answer, mode="local")
+                except (AIUnavailableError, RetryableProviderError):
+                    continue
+            raise AIUnavailableError(
+                "Image analysis is unavailable; configure vision or install a local vision engine"
+            )
+
+        if feature in _VISION_FEATURES:
+            raise ValueError("this feature requires an image")
+        local = self.providers.get("local")
+        model = _installed_model(
+            _local_feature_model(feature, realtime=task.realtime), self.local_models
+        )
+        if local is None or model is None:
+            raise AIUnavailableError(
+                "The required local AI engine is not ready; see docs/ai-runtime.md"
+            )
+        try:
+            answer = local.complete(task, model=model)
+        except (AIUnavailableError, RetryableProviderError) as error:
+            raise AIUnavailableError("Local AI is temporarily unavailable") from error
+        if not answer.strip():
+            raise AIUnavailableError("Local AI returned no answer")
+        return AIResponse(text=answer, mode="local")
 
     def route(self, task: AITask, *, mode: Mode | None = None) -> AIResponse:
         actual: Mode = mode or ("online" if detect_mode() == "online" else "local")

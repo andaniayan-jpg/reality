@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from reality._core.auth import detect_mode
 from reality._core.router import ModelRouter
 from reality._providers.base import AIResponse, AITask
 
@@ -37,4 +38,8 @@ def from_image(
     )
     if not matches:
         raise ValueError("image content does not match its extension")
-    return (router or _default_router()).route(AITask(prompt=prompt, kind="vision", image=image))
+    selected = router or _default_router()
+    task = AITask(prompt=prompt, kind="vision", image=image)
+    if router is not None or detect_mode() == "online":
+        return selected.route(task)
+    return selected.route_feature("perceive.from_image", task)

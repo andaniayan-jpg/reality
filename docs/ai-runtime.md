@@ -1,5 +1,12 @@
 # Reality AI runtime foundation
 
+3D geometry now has a deterministic entry point:
+`reality.perceive.from_3d("part.obj", units="mm")`. It returns a
+`PhysicsObject` with measured geometry and explicit unknowns without requiring
+Ollama. Optional `enrich=True` or `reality.reason.predict(..., use_ai=True)`
+uses the configured local reasoning model for **advisory prose only**.
+See [file-based 3D perception](3d-perception.md).
+
 This is an opt-in text/vision *assistant* layer, not a geometry engine. The
 authoritative `World`/`RealityModel` measurements, validation, CAD operations,
 and physics remain deterministic package code. An AI response is typed as
@@ -102,9 +109,10 @@ input. No provider can promise zero rate-limit errors or uninterrupted service.
   `VideoObservations`. Install the optional `video` extra for its decoder. The
   original video stays local; extracted images may be sent to the configured
   cloud vision service. It does not build a 3D digital twin or predict physics.
-- The proposed `reason`, `simulate`, `generate`, and `agents` AI public layers,
-  plus digital-twin prediction, remain unimplemented. Their internal routing
-  map is defined and tested but is not evidence that the layers exist.
+- `reason.predict` now provides a bounded unknown/advisory result for a
+  `PhysicsObject`; `reason.forces`, `reason.cascade`, the proposed AI
+  `simulate`, `generate`, and `agents` layers, plus digital-twin prediction,
+  remain unimplemented. Internal routing is not evidence those layers exist.
 - Live model quality, latency, and cross-provider parity validation.
 
 These are future milestones; their absence does not affect the existing

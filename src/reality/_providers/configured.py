@@ -15,7 +15,7 @@ from .openrouter import OpenRouterProvider
 
 def online_router_from_env() -> ModelRouter:
     providers: dict[str, Provider] = {}
-    if key := os.getenv("REALITY_GEMINI_API_KEY"):
+    if key := (os.getenv("REALITY_GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")):
         providers["gemini"] = GeminiProvider(key)
     if key := os.getenv("REALITY_GROQ_API_KEY"):
         providers["groq"] = GroqProvider(key)

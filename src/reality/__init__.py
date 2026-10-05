@@ -112,8 +112,10 @@ from .integrations import (
     register_addon,
     unregister_addon,
 )
-from .layers import perceive
+from .layers import perceive, twin
+from .layers import reality_capture as reality
 from .layers.copilot import copilot
+from .layers.twin import VideoObservations
 from .predicates import (
     Condition,
     Objective,
@@ -143,6 +145,9 @@ __all__ = [
     "login",
     "logout",
     "perceive",
+    "reality",
+    "twin",
+    "VideoObservations",
     "AmbiguousObjectError",
     "AccelerationUnavailableError",
     "AgentAction",

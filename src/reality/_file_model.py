@@ -26,9 +26,10 @@ from ._world import World
 if TYPE_CHECKING:
     from ._editing import EditSession
 
-ModelFormat: TypeAlias = Literal["obj", "stl", "ply", "glb", "gltf", "step", "stp"]
+ModelFormat: TypeAlias = Literal["obj", "stl", "ply", "glb", "gltf", "step", "stp", "urdf"]
 _MESH_FORMATS = frozenset({"obj", "stl", "ply", "glb", "gltf"})
 _CAD_FORMATS = frozenset({"step", "stp"})
+_ROBOT_FORMATS = frozenset({"urdf"})
 _UNIT_FACTORS: Mapping[str, float] = MappingProxyType(
     {"m": 1.0, "mm": 0.001, "cm": 0.01, "um": 0.000001, "in": 0.0254, "ft": 0.3048}
 )
@@ -458,13 +459,20 @@ def open_model(
     if size > max_bytes:
         raise ModelFileError(f"{source}: file size {size} exceeds safety limit {max_bytes}")
     suffix = source.suffix.lower().lstrip(".")
-    if suffix not in _MESH_FORMATS | _CAD_FORMATS:
+    if suffix not in _MESH_FORMATS | _CAD_FORMATS | _ROBOT_FORMATS:
         raise ModelFileError(f"{source}: unsupported format .{suffix}")
     _validate_content(source, suffix)
     if parser_hook is not None:
         parser_hook(source, "before")
     try:
-        model = _open_step(source, suffix) if suffix in _CAD_FORMATS else _open_mesh(source, suffix)
+        if suffix in _CAD_FORMATS:
+            model = _open_step(source, suffix)
+        elif suffix in _ROBOT_FORMATS:
+            from ._robot_model import open_urdf
+
+            model = open_urdf(source, max_bytes=max_bytes)
+        else:
+            model = _open_mesh(source, suffix)
     except ModelFileError:
         raise
     except Exception as error:
@@ -478,7 +486,10 @@ def open_model(
 
 
 def _open_mesh(source: Path, suffix: str) -> RealityModel:
-    loaded = trimesh.load(source, force="scene", process=False)
+    # STL stores disconnected triangle records, even for a closed solid.
+    # Merge coincident vertices on import so watertight/volume checks work.
+    # Other formats retain their authored vertices and topology.
+    loaded = trimesh.load(source, force="scene", process=suffix == "stl")
     scene = loaded if isinstance(loaded, trimesh.Scene) else trimesh.Scene(loaded)
     parts: list[ModelPart] = []
     used: set[str] = set()

@@ -7,6 +7,7 @@ from typing import Literal
 
 from reality._core.auth import detect_mode
 from reality._core.router import ModelRouter
+from reality._physics_object import PhysicsObject
 from reality._providers.base import AIResponse, AITask, AIUnavailableError, Provider
 from reality._providers.cloud import CloudProvider
 from reality._providers.gemini import GeminiProvider
@@ -36,12 +37,22 @@ def _default_router() -> ModelRouter:
 
 def copilot(
     prompt: str,
+    obj: PhysicsObject | None = None,
     *,
     complexity: Literal["fast", "deep", "agent"] = "fast",
     realtime: bool = False,
     router: ModelRouter | None = None,
 ) -> AIResponse:
     """Ask a model for guidance; never treat its text as measured physics."""
+    if obj is not None:
+        if not isinstance(obj, PhysicsObject):
+            raise TypeError("copilot context must be a PhysicsObject")
+        prompt = (
+            f"Question: {prompt}\nAuthoritative imported geometry: {obj.summary}\n"
+            f"Evidence limits: {obj.limitations}\n"
+            "Do not assert a physical failure, material grade or computed stress "
+            "without sufficient data and validated analysis."
+        )
     task = AITask(prompt=prompt, complexity=complexity, realtime=realtime)
     selected = router or _default_router()
     if router is not None or detect_mode() == "online":

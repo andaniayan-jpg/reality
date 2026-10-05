@@ -68,6 +68,7 @@ from ._physics import (
     StabilityResult,
     UnsupportedPhysicsOperationError,
 )
+from ._physics_object import PhysicsObject, WeakPoint
 from ._provenance import ProvenanceEntry, WorldLedger, WorldProvenance, provenance_for
 from ._providers.base import (
     AIResponse,
@@ -76,6 +77,7 @@ from ._providers.base import (
     Provider,
     RetryableProviderError,
 )
+from ._robot_model import DeclaredJoint
 from ._state import (
     Change,
     ChangeSet,
@@ -112,7 +114,7 @@ from .integrations import (
     register_addon,
     unregister_addon,
 )
-from .layers import perceive, twin
+from .layers import perceive, reason, twin
 from .layers import reality_capture as reality
 from .layers.copilot import copilot
 from .layers.twin import VideoObservations
@@ -145,6 +147,7 @@ __all__ = [
     "login",
     "logout",
     "perceive",
+    "reason",
     "reality",
     "twin",
     "VideoObservations",
@@ -172,6 +175,7 @@ __all__ = [
     "CADBackendUnavailableError",
     "Consequence",
     "ConsequenceSet",
+    "DeclaredJoint",
     "Contact",
     "ClearanceResult",
     "GraphUpdateStats",
@@ -212,6 +216,7 @@ __all__ = [
     "NavigationGrid",
     "ObjectNotFoundError",
     "PhysicalProperties",
+    "PhysicsObject",
     "PositionSearchChange",
     "ProvenanceEntry",
     "PhysicsBackendUnavailableError",
@@ -242,6 +247,7 @@ __all__ = [
     "WorldBranch",
     "WorldObject",
     "WorldSnapshot",
+    "WeakPoint",
     "WarpStatus",
     "UnsupportedPhysicsOperationError",
     "UnsupportedIntegrationCapabilityError",

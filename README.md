@@ -2,6 +2,36 @@
 
 `reality` is a small, typed foundation for treating a physical 3D scene as a Python object. It loads common mesh formats today and exposes deterministic spatial queries without committing the public API to a physics or rendering engine.
 
+## 3D files as physical objects
+
+`perceive.from_3d()` is a measured, uncertainty-aware entry point to the
+existing mesh/CAD model, Reality Graph, and spatial queries:
+
+```python
+import reality
+
+obj = reality.perceive.from_3d("bracket.stl", units="mm", density_kg_m3=2700)
+print(obj.summary)
+print(obj.surface_area, obj.volume, obj.centre_of_mass)
+print(obj.estimated_mass)  # kg; estimate from the supplied density
+print(obj.weak_points)     # screening candidates, not a stress calculation
+
+# The imported mesh/B-rep, parts, hierarchy, graph and World are shared.
+print(obj.model.parts, obj.graph, obj.world)
+
+assessment = reality.reason.predict("will this fail under 500 kg?", obj)
+print(assessment)  # unknown until a load case, supports and strength are supplied
+```
+
+OBJ, STL, PLY, GLB and glTF use Trimesh; STEP/STP retain B-reps with the
+optional `cad` extra. URDF reads collision/visual geometry and declared
+link/joint hierarchy at the zero-joint pose. `from_3d(..., enrich=True)` may
+add advisory text from a configured local model, but never changes measured
+geometry. `reality.copilot("question", obj)` can use the same factual context.
+No Ollama installation or model download happens during `pip install reality`.
+See [3D perception guide](docs/3d-perception.md) for units, format support,
+estimates and limits.
+
 ## Optional AI runtime foundation
 
 The package now includes a provider-neutral `reality.copilot()` text entry point,

@@ -17,6 +17,8 @@ from .base import (
 )
 from .openai_compatible import _image_mime
 
+VISION_MODELS = ("gemini-3.8-flash", "gemini-3.6-flash")
+
 
 class GeminiProvider:
     def __init__(self, api_key: str, *, timeout: float = 60.0) -> None:
@@ -24,6 +26,22 @@ class GeminiProvider:
             raise ValueError("provider API key is required")
         self.api_key = api_key
         self.timeout = timeout
+
+    def complete_vision(self, task: AITask) -> str:
+        """Try currently supported vision-capable endpoints in priority order.
+
+        Provider details stay internal; callers may then try a local engine.
+        """
+        if task.kind != "vision":
+            raise ValueError("complete_vision requires a vision task")
+        for model in VISION_MODELS:
+            try:
+                answer = self.complete(task, model=model)
+                if answer.strip():
+                    return answer
+            except (AIUnavailableError, RetryableProviderError):
+                continue
+        raise AIUnavailableError("cloud vision is unavailable")
 
     def complete(self, task: AITask, *, model: str) -> str:
         if not model or "/" in model:

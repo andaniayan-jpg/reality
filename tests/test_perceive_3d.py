@@ -81,11 +81,13 @@ def test_open_shell_never_gets_volume_or_mass(tmp_path: Path) -> None:
     assert obj.centre_of_mass is None
 
 
-def test_unsupported_formats_fail_without_faking_geometry(tmp_path: Path) -> None:
+def test_blend_is_never_silently_parsed_as_geometry(tmp_path: Path) -> None:
     path = tmp_path / "model.blend"
     path.write_bytes(b"BLENDER-vfake")
-    with pytest.raises(reality.ModelFileError, match="unsupported format"):
+    with pytest.raises(reality.BlenderConversionRequired) as caught:
         reality.perceive.from_3d(path)
+    assert not caught.value.output.exists()
+    caught.value.script.unlink()
 
 
 def test_reason_predict_refuses_unverified_failure_claim(tmp_path: Path) -> None:
@@ -119,6 +121,7 @@ class _FakeProvider:
                 "Measured object facts",
                 "Authoritative geometry",
                 "Authoritative imported geometry",
+                "Measured geometry",
             )
         )
         assert model == "qwen3:14b"
@@ -136,6 +139,37 @@ def test_optional_ai_never_overwrites_geometry(tmp_path: Path) -> None:
     assert report.outcome == "unknown"
     assert report.advisory is not None
     assert reality.copilot("what should I inspect?", obj, router=router).text
+
+
+def test_axial_yield_screen_uses_measured_area_and_explicit_strength(tmp_path: Path) -> None:
+    obj = reality.perceive.from_3d(_box(tmp_path / "bar.obj"), units="m")
+    inputs = {
+        "load_axis": "z",
+        "load_case": "axial_compression",
+        "support": "opposed_face",
+        "yield_source": "test fixture",
+    }
+    weak = reality.reason.predict(
+        "will this fail under 500kg load?", obj, yield_strength_pa=1000, **inputs
+    )
+    assert weak.will_fail is True
+    assert weak.safety_factor == pytest.approx(1000 * 4 / (500 * 9.80665))
+    assert weak.failure_regions
+    assert weak.confidence == "estimated"
+    assert weak.evidence["sample_count"] == 19
+    strong = reality.reason.predict(
+        "will this fail under 500kg load?", obj, yield_strength_pa=1e6, **inputs
+    )
+    assert strong.will_fail is False
+    assert strong.safety_factor is not None and strong.safety_factor > 1
+
+
+def test_material_name_has_no_fabricated_yield_strength() -> None:
+    spec = reality.material("steel")
+    assert spec.density_kg_m3 == 7850
+    assert spec.yield_strength_pa is None
+    with pytest.raises(ValueError, match="source"):
+        reality.material("steel", yield_strength_pa=2e8)
 
 
 def test_step_preserves_brep_when_cad_extra_is_installed(tmp_path: Path) -> None:
@@ -182,3 +216,118 @@ def test_urdf_rejects_external_entities_and_escaping_mesh_paths(tmp_path: Path) 
     )
     with pytest.raises(reality.ModelFileError, match="escapes source directory"):
         reality.perceive.from_3d(path)
+
+
+def test_sdf_reads_declared_links_joints_and_geometry(tmp_path: Path) -> None:
+    path = tmp_path / "arm.sdf"
+    path.write_text(
+        """<sdf version="1.9"><model name="arm">
+        <link name="base"><collision name="body"><geometry>
+          <box><size>1 1 1</size></box>
+        </geometry></collision></link>
+        <link name="tool"><pose>0 0 2 0 0 0</pose><collision name="end">
+          <geometry><box><size>0.2 0.2 1</size></box></geometry>
+        </collision></link>
+        <joint name="hinge" type="revolute"><parent>base</parent><child>tool</child>
+          <axis><xyz>0 1 0</xyz></axis>
+        </joint></model></sdf>""",
+        encoding="utf-8",
+    )
+    obj = reality.perceive.from_3d(path)
+    assert obj.model.format == "sdf"
+    assert obj.units == "m"
+    assert obj.model.part("tool").bounds.center[2] == pytest.approx(2)
+    assert obj.joints[0].name == "hinge"
+    assert obj.joints[0].axis == (0, 1, 0)
+    assert obj.model.assemblies[1].child_ids == ("link-tool",)
+
+
+def test_sdf_rejects_unresolved_relative_frame(tmp_path: Path) -> None:
+    path = tmp_path / "frames.sdf"
+    path.write_text(
+        '<sdf version="1.9"><model name="m"><link name="x">'
+        '<pose relative_to="other">0 0 0 0 0 0</pose>'
+        '<collision name="c"><geometry><box><size>1 1 1</size></box>'
+        "</geometry></collision></link></model></sdf>"
+    )
+    with pytest.raises(reality.ModelFileError, match="relative_to"):
+        reality.perceive.from_3d(path)
+
+
+def test_iges_keeps_solid_brep_with_unknown_source_units(tmp_path: Path) -> None:
+    cq = pytest.importorskip("cadquery")
+    from OCP.IGESControl import IGESControl_Writer
+
+    path = tmp_path / "body.iges"
+    writer = IGESControl_Writer()
+    writer.AddShape(cq.Workplane("XY").box(20, 20, 10).val().wrapped)
+    assert writer.Write(str(path))
+    obj = reality.perceive.from_3d(path)
+    assert obj.model.format == "iges"
+    assert obj.model.parts[0].solid is not None
+    assert obj.model.parts[0].faces is not None
+    assert obj.source_units == "unknown"
+    assert obj.estimated_mass is None
+    if not any(part.volume is not None for part in obj.parts):
+        assert obj.watertight is False
+
+
+@pytest.mark.parametrize("suffix", ["usda", "usdc", "usd"])
+def test_usd_reads_real_stage_mesh_and_hierarchy(tmp_path: Path, suffix: str) -> None:
+    pytest.importorskip("pxr")
+    from pxr import Gf, Usd, UsdGeom
+
+    path = tmp_path / f"scene.{suffix}"
+    stage = Usd.Stage.CreateNew(str(path))
+    UsdGeom.SetStageMetersPerUnit(stage, 1.0)
+    UsdGeom.Xform.Define(stage, "/Assembly")
+    cube = trimesh.creation.box(extents=(2, 2, 2))
+    mesh = UsdGeom.Mesh.Define(stage, "/Assembly/Body")
+    mesh.GetPointsAttr().Set([Gf.Vec3f(*map(float, vertex)) for vertex in cube.vertices])
+    mesh.GetFaceVertexCountsAttr().Set([3] * len(cube.faces))
+    mesh.GetFaceVertexIndicesAttr().Set([int(index) for index in cube.faces.ravel()])
+    stage.GetRootLayer().Save()
+    del stage
+
+    obj = reality.perceive.from_3d(path, density_kg_m3=1000)
+    assert obj.model.format == suffix
+    assert obj.volume == pytest.approx(8)
+    assert obj.estimated_mass == pytest.approx(8000)
+    assert obj.model.parts[0].name == "Body"
+    assert obj.model.assemblies[1].name == "Assembly"
+    assert obj.model.assemblies[1].part_ids == ("part-1",)
+
+
+def test_blend_requires_reviewed_manual_export(tmp_path: Path) -> None:
+    path = tmp_path / "scene.blend"
+    path.write_bytes(b"BLENDER-v2-test")
+    with pytest.raises(reality.BlenderConversionRequired) as caught:
+        reality.perceive.from_3d(path)
+    instruction = caught.value
+    assert instruction.source == path
+    assert instruction.output == tmp_path / "scene-reality.obj"
+    assert "--disable-autoexec" in instruction.command
+    assert "bpy.ops.wm.obj_export" in instruction.script.read_text(encoding="utf-8")
+    instruction.script.unlink()
+
+
+def test_assimp_obj_conversion_rejects_nontriangular_faces() -> None:
+    from types import SimpleNamespace
+
+    from reality._assimp_model import _obj_mesh
+
+    cube = trimesh.creation.box()
+    converted = _obj_mesh(SimpleNamespace(vertices=cube.vertices, faces=cube.faces))
+    assert converted.is_watertight
+    assert converted.volume == pytest.approx(1)
+    bad = SimpleNamespace(vertices=cube.vertices, faces=[[0, 1, 2, 3]])
+    with pytest.raises(reality.ModelFileError, match="non-triangular"):
+        _obj_mesh(bad)
+
+
+def test_assimp_dependency_failure_is_actionable(tmp_path: Path) -> None:
+    path = tmp_path / "model.fbx"
+    path.write_bytes(b"not a valid FBX file")
+    with pytest.raises(reality.ModelFileError) as caught:
+        reality.perceive.from_3d(path)
+    assert "native libassimp" in str(caught.value) or "could not parse" in str(caught.value)

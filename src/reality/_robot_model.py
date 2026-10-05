@@ -243,3 +243,171 @@ def open_urdf(source: Path, *, max_bytes: int) -> RealityModel:
             "file_size": len(contents),
         },
     )
+
+
+@dataclass(frozen=True, slots=True)
+class _VisualMaterial:
+    name: str
+
+
+def _sdf_pose(element: ET.Element) -> Transform:
+    node = element.find("pose")
+    if node is None:
+        return Transform()
+    if node.get("relative_to") or node.get("degrees") == "true":
+        raise ModelFileError("SDF relative_to frames and degree-valued poses need libsdformat")
+    values = _numbers(node.text or "0 0 0 0 0 0", 6, "pose")
+    return Transform(position=cast(Vector3, values[:3]), rotation=cast(Vector3, values[3:]))
+
+
+def _sdf_geometry(geometry: ET.Element) -> ET.Element:
+    """Translate the supported SDF primitive tags to the shared mesh reader."""
+    adapted = ET.Element("geometry")
+    for tag, attributes in (
+        ("box", {"size": "size"}),
+        ("sphere", {"radius": "radius"}),
+        ("cylinder", {"radius": "radius", "length": "length"}),
+        ("mesh", {"filename": "uri", "scale": "scale"}),
+    ):
+        shape = geometry.find(tag)
+        if shape is None:
+            continue
+        child = ET.SubElement(adapted, tag)
+        for target, source in attributes.items():
+            value = shape.findtext(source)
+            if value is not None:
+                child.set(target, value.strip())
+        return adapted
+    raise ModelFileError("unsupported SDF geometry; box, sphere, cylinder or local mesh required")
+
+
+def open_sdf(source: Path, *, max_bytes: int) -> RealityModel:
+    """Read a single simple SDF model at its declared zero configuration.
+
+    Full SDF frame graphs, includes, plugins and dynamics require libsdformat;
+    this reader rejects those constructs instead of silently misplacing parts.
+    """
+    if source.stat().st_size > min(max_bytes, _MAX_XML_BYTES):
+        raise ModelFileError("SDF XML exceeds safety limit")
+    contents = source.read_bytes()
+    if b"\0" in contents or b"<!DOCTYPE" in contents.upper() or b"<!ENTITY" in contents.upper():
+        raise ModelFileError("SDF XML must be UTF-8-compatible text without DTD/entities")
+    try:
+        root = ET.fromstring(contents)
+    except ET.ParseError as error:
+        raise ModelFileError("malformed SDF XML") from error
+    if root.tag != "sdf":
+        raise ModelFileError("SDF root element must be <sdf>")
+    models = root.findall("model") + root.findall("world/model")
+    if len(models) != 1:
+        raise ModelFileError("SDF reader requires exactly one top-level model")
+    model = models[0]
+    if any(model.findall(tag) for tag in ("include", "model", "frame", "plugin")):
+        raise ModelFileError("nested SDF models, includes, frames and plugins are unsupported")
+    links = model.findall("link")
+    if not links or len(links) > 10_000:
+        raise ModelFileError("SDF model must contain 1–10,000 direct links")
+    names = [link.get("name") for link in links]
+    if any(not name for name in names) or len(set(names)) != len(names):
+        raise ModelFileError("SDF link names must be nonempty and unique")
+    by_name = {cast(str, link.get("name")): link for link in links}
+    model_pose = _sdf_pose(model)
+    joints: list[DeclaredJoint] = []
+    parent_of: dict[str, str] = {}
+    children: dict[str, list[str]] = {name: [] for name in by_name}
+    for node in model.findall("joint"):
+        parent = (node.findtext("parent") or "").strip()
+        child = (node.findtext("child") or "").strip()
+        if parent not in by_name or child not in by_name or child in parent_of:
+            raise ModelFileError("SDF joint has unknown or repeated child link")
+        axis_node = node.find("axis/xyz")
+        if axis_node is not None and axis_node.get("expressed_in"):
+            raise ModelFileError("SDF joint axis expressed_in requires frame resolution")
+        axis_text = axis_node.text if axis_node is not None else "0 0 1"
+        joints.append(
+            DeclaredJoint(
+                name=node.get("name") or f"{parent}-to-{child}",
+                type=node.get("type") or "unknown",
+                parent=parent,
+                child=child,
+                axis=cast(Vector3, _numbers(axis_text, 3, "joint axis")),
+                origin=_sdf_pose(node),
+            )
+        )
+        parent_of[child] = parent
+        children[parent].append(child)
+    for name in by_name:
+        lineage: set[str] = set()
+        current = name
+        while current in parent_of:
+            if current in lineage:
+                raise ModelFileError("SDF joint hierarchy contains a cycle")
+            lineage.add(current)
+            current = parent_of[current]
+    parts: list[ModelPart] = []
+    part_ids: dict[str, list[str]] = {name: [] for name in by_name}
+    for name, link in by_name.items():
+        link_matrix = model_pose.matrix @ _sdf_pose(link).matrix
+        visual = link.find("visual/material/script/name")
+        visual_material = (
+            _VisualMaterial(visual.text.strip()) if visual is not None and visual.text else None
+        )
+        nodes = link.findall("collision") or link.findall("visual")
+        for node in nodes:
+            geometry = node.find("geometry")
+            if geometry is None:
+                raise ModelFileError("SDF collision/visual element needs geometry")
+            for mesh, mesh_transform in _mesh_for_geometry(
+                _sdf_geometry(geometry), source, max_bytes
+            ):
+                transform = Transform.from_matrix(
+                    link_matrix @ _sdf_pose(node).matrix @ mesh_transform.matrix
+                )
+                part_id = f"part-{len(parts) + 1}"
+                part_name = name if not part_ids[name] else f"{name}-{len(part_ids[name]) + 1}"
+                parts.append(
+                    ModelPart(
+                        name=part_name,
+                        id=part_id,
+                        transform=transform,
+                        bounds=Bounds.from_points(np.asarray(mesh.bounds)).transformed(transform),
+                        material=visual_material,
+                        _mesh=mesh,
+                        metadata={"source_link": name, "geometry_role": node.tag},
+                    )
+                )
+                part_ids[name].append(part_id)
+    if not parts:
+        raise ModelFileError("SDF contains no supported collision or visual geometry")
+    roots = [name for name in by_name if name not in parent_of]
+    assemblies = (
+        ModelAssembly(
+            name=model.get("name") or source.stem,
+            id="assembly-root",
+            child_ids=tuple(f"link-{name}" for name in roots),
+        ),
+        *(
+            ModelAssembly(
+                name=name,
+                id=f"link-{name}",
+                part_ids=tuple(part_ids[name]),
+                child_ids=tuple(f"link-{child}" for child in children[name]),
+                parent_id=f"link-{parent_of[name]}" if name in parent_of else "assembly-root",
+            )
+            for name in by_name
+        ),
+    )
+    return _model_from_parts(
+        source,
+        "sdf",
+        "m",
+        parts,
+        assemblies,
+        {
+            "backend": "sdf-xml+trimesh",
+            "unit_source": "SDF SI metres convention",
+            "joints": tuple(joints),
+            "pose": "declared zero configuration",
+            "file_size": len(contents),
+        },
+    )

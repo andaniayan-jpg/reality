@@ -13,6 +13,7 @@ from reality._providers.base import (
     Provider,
     RetryableProviderError,
 )
+from reality._providers.gemini import VISION_MODELS, GeminiProvider
 
 from .auth import detect_mode
 
@@ -107,10 +108,21 @@ class ModelRouter:
         if feature not in _VISION_FEATURES | _TEXT_FEATURES:
             raise ValueError("unsupported AI feature")
         if task.kind == "vision":
+            gateway = self.providers.get("cloud")
+            if gateway is not None:
+                try:
+                    answer = gateway.complete(task, model="")
+                    if answer.strip():
+                        return AIResponse(text=answer, mode="online")
+                except (AIUnavailableError, RetryableProviderError):
+                    pass
             cloud = self.providers.get("gemini")
             if cloud is not None:
                 try:
-                    answer = cloud.complete(task, model="gemini-2.5-flash")
+                    if isinstance(cloud, GeminiProvider):
+                        answer = cloud.complete_vision(task)
+                    else:
+                        answer = self._try_vision_models(cloud, task)
                     if answer.strip():
                         return AIResponse(text=answer, mode="online")
                 except (AIUnavailableError, RetryableProviderError):
@@ -148,6 +160,17 @@ class ModelRouter:
             raise AIUnavailableError("Local AI returned no answer")
         return AIResponse(text=answer, mode="local")
 
+    @staticmethod
+    def _try_vision_models(provider: Provider, task: AITask) -> str:
+        for model in VISION_MODELS:
+            try:
+                answer = provider.complete(task, model=model)
+                if answer.strip():
+                    return answer
+            except (AIUnavailableError, RetryableProviderError):
+                continue
+        raise AIUnavailableError("cloud vision is unavailable")
+
     def route(self, task: AITask, *, mode: Mode | None = None) -> AIResponse:
         actual: Mode = mode or ("online" if detect_mode() == "online" else "local")
         if actual == "local":
@@ -172,24 +195,27 @@ class ModelRouter:
         if "cloud" in self.providers:
             choices = (("cloud", ""),)
         elif task.kind == "vision":
-            choices = (("gemini", "gemini-2.5-flash"), ("groq", scout), ("openrouter", free))
+            choices = tuple(("gemini", model) for model in VISION_MODELS) + (
+                ("groq", scout),
+                ("openrouter", free),
+            )
         elif task.realtime:
-            choices = (("groq", scout), ("gemini", "gemini-2.5-flash"), ("openrouter", free))
+            choices = (("groq", scout), ("gemini", VISION_MODELS[0]), ("openrouter", free))
         elif task.complexity == "agent":
             nim_model = os.getenv("REALITY_NIM_AGENT_MODEL")
             choices = ((("nim", nim_model),) if nim_model else ()) + (
                 ("groq", maverick),
-                ("gemini", "gemini-2.5-flash"),
+                ("gemini", VISION_MODELS[0]),
                 ("openrouter", free),
             )
         elif task.complexity == "deep":
             choices = (
                 ("groq", maverick),
-                ("gemini", "gemini-2.5-flash"),
+                ("gemini", VISION_MODELS[0]),
                 ("openrouter", free),
             )
         else:
-            choices = (("groq", scout), ("gemini", "gemini-2.5-flash"), ("openrouter", free))
+            choices = (("groq", scout), ("gemini", VISION_MODELS[0]), ("openrouter", free))
         for name, model in choices:
             provider = self.providers.get(name)
             if provider is None:

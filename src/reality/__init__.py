@@ -29,6 +29,7 @@ from ._batch import (
     FutureSelection,
     RankedFutures,
 )
+from ._blender_conversion import BlenderConversionRequired
 from ._branch import WorldBranch
 from ._bridge import BridgeRequestError, RealityBridge, serve_jsonl
 from ._core.auth import detect_mode, login, logout
@@ -50,6 +51,7 @@ from ._file_model import (
 from ._graph import GraphUpdateStats, RealityGraph, Relationship, RelationshipType
 from ._ledger_store import JsonlLedgerStore, LedgerIntegrityError, LedgerVerification
 from ._loaders import load
+from ._materials import MaterialProperties, material
 from ._metadata import SceneMetadataError
 from ._models import Bounds, PhysicalProperties, PredicateResult, Transform, WorldObject
 from ._navigation import (
@@ -163,6 +165,7 @@ __all__ = [
     "Articulation",
     "Bounds",
     "BlenderSceneIntegration",
+    "BlenderConversionRequired",
     "BlenderTransformChange",
     "BlenderTransformPreview",
     "BridgeRequestError",
@@ -213,6 +216,7 @@ __all__ = [
     "ModelPart",
     "ModelResult",
     "ModelValidation",
+    "MaterialProperties",
     "NavigationGrid",
     "ObjectNotFoundError",
     "PhysicalProperties",
@@ -253,6 +257,7 @@ __all__ = [
     "UnsupportedIntegrationCapabilityError",
     "WorldIntegration",
     "load",
+    "material",
     "Objective",
     "PredicateSpec",
     "collision",

@@ -26,10 +26,30 @@ from ._world import World
 if TYPE_CHECKING:
     from ._editing import EditSession
 
-ModelFormat: TypeAlias = Literal["obj", "stl", "ply", "glb", "gltf", "step", "stp", "urdf"]
+ModelFormat: TypeAlias = Literal[
+    "obj",
+    "stl",
+    "ply",
+    "glb",
+    "gltf",
+    "fbx",
+    "dae",
+    "3ds",
+    "step",
+    "stp",
+    "iges",
+    "igs",
+    "urdf",
+    "sdf",
+    "usd",
+    "usda",
+    "usdc",
+]
 _MESH_FORMATS = frozenset({"obj", "stl", "ply", "glb", "gltf"})
-_CAD_FORMATS = frozenset({"step", "stp"})
-_ROBOT_FORMATS = frozenset({"urdf"})
+_CAD_FORMATS = frozenset({"step", "stp", "iges", "igs"})
+_ROBOT_FORMATS = frozenset({"urdf", "sdf"})
+_USD_FORMATS = frozenset({"usd", "usda", "usdc"})
+_ASSIMP_FORMATS = frozenset({"fbx", "dae", "3ds"})
 _UNIT_FACTORS: Mapping[str, float] = MappingProxyType(
     {"m": 1.0, "mm": 0.001, "cm": 0.01, "um": 0.000001, "in": 0.0254, "ft": 0.3048}
 )
@@ -130,6 +150,8 @@ class ModelPart:
     @property
     def volume(self) -> float | None:
         if self.solid is not None:
+            if not self.solid.Solids():
+                return None
             return float(self.solid.Volume())
         if self._mesh is not None and bool(getattr(self._mesh, "is_volume", False)):
             return float(abs(self._mesh.volume) * abs(np.prod(self.transform.scale)))
@@ -149,6 +171,8 @@ class ModelPart:
     @property
     def center_of_mass(self) -> Vector3 | None:
         if self.solid is not None:
+            if not self.solid.Solids():
+                return None
             center = self.solid.Center().toTuple()
             return tuple(float(value) for value in center)  # type: ignore[return-value]
         if self._mesh is not None and bool(getattr(self._mesh, "is_volume", False)):
@@ -459,18 +483,32 @@ def open_model(
     if size > max_bytes:
         raise ModelFileError(f"{source}: file size {size} exceeds safety limit {max_bytes}")
     suffix = source.suffix.lower().lstrip(".")
-    if suffix not in _MESH_FORMATS | _CAD_FORMATS | _ROBOT_FORMATS:
+    if suffix not in _MESH_FORMATS | _CAD_FORMATS | _ROBOT_FORMATS | _USD_FORMATS | _ASSIMP_FORMATS:
         raise ModelFileError(f"{source}: unsupported format .{suffix}")
     _validate_content(source, suffix)
     if parser_hook is not None:
         parser_hook(source, "before")
     try:
-        if suffix in _CAD_FORMATS:
+        if suffix in {"step", "stp"}:
             model = _open_step(source, suffix)
+        elif suffix in {"iges", "igs"}:
+            model = _open_iges(source, suffix)
         elif suffix in _ROBOT_FORMATS:
-            from ._robot_model import open_urdf
+            from ._robot_model import open_sdf, open_urdf
 
-            model = open_urdf(source, max_bytes=max_bytes)
+            model = (
+                open_urdf(source, max_bytes=max_bytes)
+                if suffix == "urdf"
+                else open_sdf(source, max_bytes=max_bytes)
+            )
+        elif suffix in _USD_FORMATS:
+            from ._usd_model import open_usd
+
+            model = open_usd(source)
+        elif suffix in _ASSIMP_FORMATS:
+            from ._assimp_model import open_assimp
+
+            model = open_assimp(source, suffix)
         else:
             model = _open_mesh(source, suffix)
     except ModelFileError:
@@ -576,6 +614,58 @@ def _open_step(source: Path, suffix: str) -> RealityModel:
         {
             "backend": "cadquery-ocp",
             "unit_source": unit_source,
+            "file_size": source.stat().st_size,
+            "brep_preserved": True,
+        },
+    )
+
+
+def _open_iges(source: Path, suffix: str) -> RealityModel:
+    try:
+        import cadquery as cq
+        from OCP.IFSelect import IFSelect_RetDone
+        from OCP.IGESControl import IGESControl_Reader
+    except ImportError as error:
+        raise CADBackendUnavailableError(
+            "IGES support requires `pip install reality[cad]` (CadQuery/OCP)."
+        ) from error
+    reader = IGESControl_Reader()
+    if reader.ReadFile(str(source)) != IFSelect_RetDone:
+        raise ModelFileError(f"{source}: invalid IGES payload")
+    reader.TransferRoots()
+    shape = cq.Shape.cast(reader.OneShape())
+    solids = tuple(shape.Solids())
+    entities = solids or tuple(shape.Faces())
+    if not entities:
+        raise ModelFileError(f"{source}: IGES contains no transferable B-rep surfaces")
+    parts = tuple(
+        ModelPart(
+            name=f"{'solid' if solids else 'surface'}-{index}",
+            id=f"part-{index}",
+            transform=Transform(),
+            bounds=_cad_bounds(entity),
+            solid=entity,
+            metadata={"name_source": "generated", "brep_kind": entity.ShapeType()},
+        )
+        for index, entity in enumerate(entities, start=1)
+    )
+    assemblies = (
+        ModelAssembly(
+            name=source.stem,
+            id="assembly-root",
+            part_ids=tuple(part.id for part in parts),
+            metadata={"name_source": "file", "hierarchy": "transferred-B-rep-entities"},
+        ),
+    )
+    return _model_from_parts(
+        source,
+        suffix,
+        "unknown",
+        parts,
+        assemblies,
+        {
+            "backend": "cadquery-ocp-iges",
+            "unit_source": "IGES units not yet decoded; declare units explicitly",
             "file_size": source.stat().st_size,
             "brep_preserved": True,
         },
@@ -710,7 +800,9 @@ def _validate_content(source: Path, suffix: str) -> None:
                     )
     elif suffix == "ply" and not prefix.startswith(b"ply"):
         raise ModelFileError(f"{source}: .ply content is missing the PLY magic header")
-    elif suffix in _CAD_FORMATS and b"ISO-10303-21" not in prefix.upper():
+    elif suffix in _USD_FORMATS and not prefix.startswith((b"#usda", b"PXR-USDC")):
+        raise ModelFileError(f"{source}: USD content has no recognized USDA/USDC header")
+    elif suffix in {"step", "stp"} and b"ISO-10303-21" not in prefix.upper():
         raise ModelFileError(f"{source}: STEP/STP content is missing the ISO-10303-21 header")
     elif suffix == "obj" and b"\0" in prefix:
         raise ModelFileError(f"{source}: binary data is not valid OBJ text")

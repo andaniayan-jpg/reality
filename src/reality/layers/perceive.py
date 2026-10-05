@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import Path
 
-from reality._core.auth import detect_mode
+from reality._blender_conversion import conversion_instructions
 from reality._core.router import ModelRouter
 from reality._file_model import open_model
 from reality._physics_object import PhysicsObject, physics_object_from_model
@@ -32,6 +32,8 @@ def from_3d(
     adds advisory model text, never overwriting measured fields. OBJ/STL/PLY
     usually need an explicit ``units`` value for a meaningful mass estimate.
     """
+    if Path(path).suffix.lower() == ".blend":
+        raise conversion_instructions(Path(path))
     model = open_model(path, max_bytes=max_bytes)
     obj = physics_object_from_model(model, units=units, density_kg_m3=density_kg_m3)
     if not enrich:
@@ -75,6 +77,4 @@ def from_image(
         raise ValueError("image content does not match its extension")
     selected = router or _default_router()
     task = AITask(prompt=prompt, kind="vision", image=image)
-    if router is not None or detect_mode() == "online":
-        return selected.route(task)
     return selected.route_feature("perceive.from_image", task)

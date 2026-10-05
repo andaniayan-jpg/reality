@@ -231,6 +231,25 @@ def test_server_provider_adapters_form_real_wire_requests(
         assert requests[-1].get_header("Authorization") == "Bearer secret"
 
 
+def test_cloud_vision_retries_supported_endpoint_after_not_found(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    urls: list[str] = []
+
+    def fake_urlopen(request: Request, *, timeout: float) -> FakeHTTPResponse:
+        del timeout
+        urls.append(request.full_url)
+        if "gemini-3.8-flash" in request.full_url:
+            raise HTTPError(request.full_url, 404, "unavailable", {}, None)
+        return FakeHTTPResponse({"candidates": [{"content": {"parts": [{"text": "image"}]}}]})
+
+    monkeypatch.setattr("reality._providers.gemini.urlopen", fake_urlopen)
+    task = AITask("Describe", kind="vision", image=b"\x89PNG\r\n\x1a\nimage")
+    result = GeminiProvider("secret").complete_vision(task)
+    assert result == "image"
+    assert len(urls) == 2
+
+
 def test_retryable_provider_error_does_not_expose_api_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

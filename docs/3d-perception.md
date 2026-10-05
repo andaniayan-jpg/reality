@@ -12,14 +12,16 @@ delegated `measure`, `distance`, `clearance`, `intersections`, `contains`, and
 | OBJ, STL, PLY | Trimesh | No declared linear units; supply `units` for SI mass |
 | GLB, glTF | Trimesh | Uses glTF metre convention; mesh geometry is not CAD topology |
 | STEP, STP | Optional `reality[cad]` | B-rep retained; STEP units reported; no inferred joints |
+| IGES, IGS | Optional `reality[cad]` | B-rep surfaces/solids retained; source units currently unknown |
 | URDF | Safe XML + Trimesh primitives/mesh references | Zero-joint configuration, declared joints only; local mesh paths only |
-| FBX, DAE, 3DS, USD/USDA/USDC, SDF, IGES, BLEND | Not implemented | Raises `ModelFileError`, never silently approximates format semantics |
+| SDF | Safe XML + Trimesh primitives/mesh references | One top-level model, declared joints only; external includes and unresolved frames rejected |
+| USD, USDA, USDC | Optional `reality[usd]` | Static triangular/quad mesh geometry and hierarchy; no animation, variants, procedural materials or external assets |
+| FBX, DAE, 3DS | Optional `reality[assimp]` **and native libassimp** | Imported mesh groups pass through in-memory OBJ; animation, rigging, units and non-mesh semantics unavailable; native runtime not validated in this environment |
+| BLEND | Reviewable manual export script | Native Blender files are not parsed; run the generated script in Blender, then load the OBJ |
 
-Open3D advertises additional import support, but its experimental USD import
-only retains mesh/material information, not full animation or stage semantics.
-Native `.blend` parsing would require Blender and handling a script-capable
-file. These formats need separate validated adapters before they can be
-advertised as supported. File parsers should run in isolated workers with
+The USD adapter needs Python OpenUSD bindings; the command-line `usdcat` alone
+cannot expose stage geometry to Reality. `.blend` files may contain scripts, so
+Reality does not run Blender or open them automatically. File parsers should run in isolated workers with
 timeouts for untrusted uploads; the synchronous package hook does not enforce
 a hard timeout.
 
@@ -60,12 +62,28 @@ part = reality.perceive.from_3d("part.obj", units="mm", density_kg_m3=2700)
 print(part.estimated_mass)
 ```
 
-`reason.predict(question, obj)` returns an evidence-bounded `Prediction` whose
-outcome is currently `unknown`; it cannot calculate load failure from geometry
-alone. Set `use_ai=True` to request advisory text from an installed local
-Ollama model, or inject a compatible `ModelRouter`. Model text never changes
-the physical outcome or measured fields. `from_3d(..., enrich=True)` similarly
-adds `ai_notes` only. Neither API runs finite-element analysis.
+`reason.predict(question, obj)` can perform a **sampled axial-yield screen**
+for one watertight mesh with closed convex cross-sections. Supply a load axis,
+pure axial load case, opposed-face support assumption, and a documented
+yield strength. It converts a single prompt mass in kg to weight using standard
+gravity, then samples 19 interior sections and computes nominal stress
+`force / minimum sampled area` and safety factor `yield strength / stress`.
+This does **not** model buckling, bending, fatigue, fracture or contact, and
+`will_fail=False` is not a safety certification. Without the required evidence,
+`will_fail` and `safety_factor` are `None` with an explicit reason.
+
+```python
+screen = reality.reason.predict(
+    "will this fail under 500 kg load?", part,
+    load_axis="z", load_case="axial_compression", support="opposed_face",
+    yield_strength_pa=2.5e8, yield_source="your material certificate",
+)
+print(screen.will_fail, screen.safety_factor, screen.evidence)
+```
+
+Set `use_ai=True` to request advisory text from an installed local engine, or
+inject a compatible `ModelRouter`. Model text never changes measured stress or
+the screen result. `from_3d(..., enrich=True)` adds advisory `ai_notes` only.
 
 Future adapters should preserve source transforms, units, material provenance,
 assembly hierarchy and articulation, with fixture-based parity tests and

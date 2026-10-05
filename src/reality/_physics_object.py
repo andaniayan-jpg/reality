@@ -185,7 +185,7 @@ def physics_object_from_model(
         )  # type: ignore[assignment]
 
     closed = tuple(
-        True if part.solid is not None else bool(part._mesh.is_watertight)
+        bool(part.solid.Solids()) if part.solid is not None else bool(part._mesh.is_watertight)
         for part in model.parts
         if part.solid is not None or part._mesh is not None
     )

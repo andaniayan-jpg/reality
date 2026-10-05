@@ -19,13 +19,22 @@ print(obj.weak_points)     # screening candidates, not a stress calculation
 # The imported mesh/B-rep, parts, hierarchy, graph and World are shared.
 print(obj.model.parts, obj.graph, obj.world)
 
-assessment = reality.reason.predict("will this fail under 500 kg?", obj)
-print(assessment)  # unknown until a load case, supports and strength are supplied
+assessment = reality.reason.predict(
+    "will this fail under 500 kg?", obj,
+    load_axis="z", load_case="axial_compression", support="opposed_face",
+    yield_strength_pa=250_000_000, yield_source="your material certificate",
+)
+print(assessment.safety_factor, assessment.will_fail)
 ```
 
-OBJ, STL, PLY, GLB and glTF use Trimesh; STEP/STP retain B-reps with the
-optional `cad` extra. URDF reads collision/visual geometry and declared
-link/joint hierarchy at the zero-joint pose. `from_3d(..., enrich=True)` may
+OBJ, STL, PLY, GLB and glTF use Trimesh; STEP/STP/IGES retain B-reps with the
+optional `cad` extra. URDF and SDF read supported link geometry and declared
+joint hierarchy at the zero-joint pose. Static mesh USD needs the `usd` extra;
+FBX/DAE/3DS need the `assimp` extra **plus native libassimp**. Native BLEND is
+not parsed; Reality generates a script for a reviewed Blender export.
+`reason.predict` above is a narrow sampled axial-yield screen, not FEA or a
+general failure verdict. Without sufficient evidence it returns `None` for
+`will_fail` and `safety_factor`. `from_3d(..., enrich=True)` may
 add advisory text from a configured local model, but never changes measured
 geometry. `reality.copilot("question", obj)` can use the same factual context.
 No Ollama installation or model download happens during `pip install reality`.

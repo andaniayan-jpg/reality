@@ -109,8 +109,10 @@ input. No provider can promise zero rate-limit errors or uninterrupted service.
   `VideoObservations`. Install the optional `video` extra for its decoder. The
   original video stays local; extracted images may be sent to the configured
   cloud vision service. It does not build a 3D digital twin or predict physics.
-- `reason.predict` now provides a bounded unknown/advisory result for a
-  `PhysicsObject`; `reason.forces`, `reason.cascade`, the proposed AI
+- `reason.predict` provides a deterministic sampled axial-yield screen only
+  when load case, support assumption, units and sourced yield strength are
+  supplied. Otherwise it returns insufficient evidence. It is not FEA or a
+  general failure prediction. `reason.forces`, `reason.cascade`, the proposed AI
   `simulate`, `generate`, and `agents` layers, plus digital-twin prediction,
   remain unimplemented. Internal routing is not evidence those layers exist.
 - Live model quality, latency, and cross-provider parity validation.

@@ -74,10 +74,14 @@ def test_vision_prefers_configured_provider_and_falls_back_locally() -> None:
     local = RecordingProvider()
     router = ModelRouter({"gemini": cloud, "local": local}, local_models=("qwen2-vl:7b",))
     assert router.route_feature("perceive.from_image", vision).mode == "online"
-    assert cloud.calls[0][0] == "gemini-2.5-flash"
+    assert cloud.calls[0][0] == "gemini-3.8-flash"
     assert not local.calls
     cloud.failing = True
     assert router.route_feature("capture.from_image", vision).mode == "local"
+    assert [model for model, _ in cloud.calls[-2:]] == [
+        "gemini-3.8-flash",
+        "gemini-3.6-flash",
+    ]
     assert local.calls[0][0] == "qwen2-vl:7b"
 
 

@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from math import isfinite
 from types import MappingProxyType
-from typing import Literal, cast
+from typing import TYPE_CHECKING, Literal, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -25,6 +25,9 @@ from ._file_model import (
 from ._models import Bounds, Vector3
 from ._robot_model import DeclaredInertia, DeclaredJoint
 from ._world import World
+
+if TYPE_CHECKING:
+    from ._physics_modify import PhysicsExporter, PhysicsModification
 
 _METRES_PER_UNIT: Mapping[str, float] = MappingProxyType(
     {"m": 1.0, "mm": 0.001, "cm": 0.01, "um": 0.000001, "in": 0.0254, "ft": 0.3048}
@@ -82,6 +85,25 @@ class PhysicsObject:
     fast: bool = False
     mass_source: Literal["declared", "estimated", "unknown"] = "unknown"
     analysis_sample_fraction: float | None = None
+
+    @property
+    def modify(self) -> PhysicsModification:
+        """Start a copy-on-write edit draft; this parsed object stays unchanged."""
+        from ._physics_modify import PhysicsModification
+
+        return PhysicsModification(self)
+
+    @property
+    def export(self) -> PhysicsExporter:
+        """Export the current unmodified mesh through a callable format namespace."""
+        from ._physics_modify import PhysicsExporter
+
+        return PhysicsExporter(self)
+
+    @property
+    def change_log(self) -> tuple[str, ...]:
+        """An imported object has no edits; edit drafts hold their own logs."""
+        return ()
 
     def _require_model(self) -> RealityModel:
         if self.model is None:

@@ -47,6 +47,19 @@ No Ollama installation or model download happens during `pip install reality`.
 See [3D perception guide](docs/3d-perception.md) for units, format support,
 estimates and limits.
 
+Copy-on-write mesh edits can be staged without changing the imported object:
+
+```python
+draft = obj.modify.scale(factor=1.5).material("aluminium")
+draft.export("bracket-edited.glb")
+print(draft.result.volume, reality.diff(obj, draft).volume_delta)
+```
+
+The draft materializes only when `result` or `export` is used. Geometry edits
+do not claim to update CAD B-reps, robot joint frames, or certified material
+properties. See [3D modification guide](docs/3d-modification.md) for supported
+operations, round-trip limits, and intentionally unavailable exporters.
+
 ## Optional AI runtime foundation
 
 The package now includes a provider-neutral `reality.copilot()` text entry point,

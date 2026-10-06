@@ -528,7 +528,9 @@ def _open_mesh(source: Path, suffix: str) -> RealityModel:
     # STL stores disconnected triangle records, even for a closed solid.
     # Merge coincident vertices on import so watertight/volume checks work.
     # Other formats retain their authored vertices and topology.
-    loaded = trimesh.load(source, force="scene", process=suffix == "stl")
+    loaded = trimesh.load(
+        source, force="scene", process=suffix == "stl", split_objects=suffix == "obj"
+    )
     scene = loaded if isinstance(loaded, trimesh.Scene) else trimesh.Scene(loaded)
     parts: list[ModelPart] = []
     used: set[str] = set()

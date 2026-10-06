@@ -90,7 +90,9 @@ def predict(
         missing.append("axial tension/compression load case")
     if support is None:
         missing.append("opposed-face support assumption")
-    if len(obj.parts) != 1 or obj.parts[0]._mesh is None or obj.watertight is not True:
+    if not obj.supported:
+        missing.append("supported parsed geometry")
+    elif len(obj.parts) != 1 or obj.parts[0]._mesh is None or obj.watertight is not True:
         missing.append("a single watertight mesh part")
 
     sections: tuple[tuple[float, float], ...] | None = None

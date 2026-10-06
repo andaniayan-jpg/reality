@@ -15,9 +15,15 @@ from typing import Literal, cast
 import numpy as np
 from numpy.typing import NDArray
 
-from ._file_model import ModelPart, ModelResult, RealityModel
+from ._file_model import (
+    ModelAssembly,
+    ModelPart,
+    ModelResult,
+    RealityModel,
+    _bounds_for_parts,
+)
 from ._models import Bounds, Vector3
-from ._robot_model import DeclaredJoint
+from ._robot_model import DeclaredInertia, DeclaredJoint
 from ._world import World
 
 _METRES_PER_UNIT: Mapping[str, float] = MappingProxyType(
@@ -51,7 +57,7 @@ class PhysicsObject:
     volume, and centre of mass use ``units``; estimated mass uses kilograms.
     """
 
-    model: RealityModel
+    model: RealityModel | None
     units: str
     source_units: str
     material: str | None
@@ -69,46 +75,58 @@ class PhysicsObject:
     summary: str
     limitations: tuple[str, ...]
     ai_notes: str | None = None
+    supported: bool = True
+    install_hint: str | None = None
+    blend_export_script: str | None = None
+    message: str | None = None
+    fast: bool = False
+    mass_source: Literal["declared", "estimated", "unknown"] = "unknown"
+    analysis_sample_fraction: float | None = None
+
+    def _require_model(self) -> RealityModel:
+        if self.model is None:
+            raise ValueError(self.message or "Geometry is unavailable for this file")
+        return self.model
 
     @property
     def geometry(self) -> RealityModel:
         """The original backend-neutral geometry and its source hierarchy."""
-        return self.model
+        return self._require_model()
 
     @property
     def graph(self) -> object:
-        return self.model.graph
+        return self._require_model().graph
 
     @property
     def world(self) -> World:
         """Existing spatial World view, sharing the imported part geometry."""
-        return self.model._world
+        return self._require_model()._world
 
     @property
     def bounds(self) -> Bounds:
-        return self.model.bounds
+        return self._require_model().bounds
 
     @property
     def parts(self) -> tuple[ModelPart, ...]:
-        return self.model.parts
+        return self._require_model().parts
 
     def measure(self, part: str | ModelPart) -> ModelResult[Mapping[str, object]]:
-        return self.model.measure(part)
+        return self._require_model().measure(part)
 
     def distance(self, first: str | ModelPart, second: str | ModelPart) -> ModelResult[float]:
-        return self.model.distance(first, second)
+        return self._require_model().distance(first, second)
 
     def clearance(self, first: str | ModelPart, second: str | ModelPart) -> ModelResult[float]:
-        return self.model.clearance(first, second)
+        return self._require_model().clearance(first, second)
 
     def intersections(self) -> tuple[ModelResult[bool], ...]:
-        return self.model.intersections()
+        return self._require_model().intersections()
 
     def contains(self, outer: str | ModelPart, inner: str | ModelPart) -> ModelResult[bool]:
-        return self.model.contains(outer, inner)
+        return self._require_model().contains(outer, inner)
 
     def topology(self, part: str | ModelPart | None = None) -> Mapping[str, object]:
-        return self.model.topology(part)
+        return self._require_model().topology(part)
 
     @property
     def center_of_mass(self) -> Vector3 | None:
@@ -123,7 +141,7 @@ class PhysicsObject:
         their source triangle areas cannot be rescaled by a single factor.
         """
         result: dict[str, tuple[float, ...] | None] = {}
-        for part in self.model.parts:
+        for part in self._require_model().parts:
             if part.solid is not None:
                 result[part.id] = tuple(float(face.Area()) for face in part.solid.Faces())
             elif part._mesh is not None and len(set(part.transform.scale)) == 1:
@@ -134,11 +152,147 @@ class PhysicsObject:
         return MappingProxyType(result)
 
 
+@dataclass(frozen=True, slots=True)
+class SceneNode:
+    """One source hierarchy node; parts are referenced by ID, not copied."""
+
+    id: str
+    name: str
+    part_ids: tuple[str, ...]
+    children: tuple[SceneNode, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class PhysicsScene(PhysicsObject):
+    """A multi-component file with shared source geometry and an explicit tree."""
+
+    objects: tuple[PhysicsObject, ...] = ()
+    hierarchy: tuple[SceneNode, ...] = ()
+
+    @property
+    def total_mass(self) -> float | None:
+        masses = [obj.estimated_mass for obj in self.objects]
+        if any(mass is None for mass in masses):
+            return None
+        return sum(cast(float, mass) for mass in masses)
+
+
+def unsupported_physics_object(
+    *, message: str, install_hint: str | None = None, blend_export_script: str | None = None
+) -> PhysicsObject:
+    """Return an explicit absence of geometry without inventing a model."""
+    return PhysicsObject(
+        model=None,
+        units="unknown",
+        source_units="unknown",
+        material=None,
+        material_source="unknown",
+        estimated_mass=None,
+        moment_of_inertia=None,
+        density_kg_m3=None,
+        volume=None,
+        surface_area=None,
+        centre_of_mass=None,
+        watertight=None,
+        weak_points=(),
+        joints=(),
+        balance="unknown",
+        summary=message,
+        limitations=(message,),
+        supported=False,
+        install_hint=install_hint,
+        blend_export_script=blend_export_script,
+        message=message,
+    )
+
+
+def physics_scene_from_model(
+    model: RealityModel,
+    *,
+    units: str | None = None,
+    density_kg_m3: float | None = None,
+    fast: bool = False,
+) -> PhysicsScene:
+    """Create per-component views that share all source meshes/B-reps."""
+    aggregate = physics_object_from_model(
+        model, units=units, density_kg_m3=density_kg_m3, fast=fast
+    )
+    groups: list[tuple[str, tuple[ModelPart, ...]]] = []
+    if model.format in {"urdf", "sdf"}:
+        for assembly in model.assemblies:
+            if assembly.id == "assembly-root":
+                continue
+            selected = tuple(part for part in model.parts if part.id in assembly.part_ids)
+            if selected:
+                groups.append((assembly.name, selected))
+    else:
+        groups = [(part.name, (part,)) for part in model.parts]
+    objects: list[PhysicsObject] = []
+    for name, selected in groups:
+        child_model = RealityModel(
+            source=model.source,
+            format=model.format,
+            units=model.units,
+            bounds=_bounds_for_parts(selected),
+            parts=selected,
+            assemblies=(
+                ModelAssembly(
+                    name=name, id="assembly-root", part_ids=tuple(p.id for p in selected)
+                ),
+            ),
+            metadata={
+                **model.metadata,
+                "declared_inertias": {
+                    link: inertia
+                    for link, inertia in cast(
+                        Mapping[str, DeclaredInertia], model.metadata.get("declared_inertias", {})
+                    ).items()
+                    if link in {str(part.metadata.get("source_link")) for part in selected}
+                },
+            },
+            _world=model._world,
+        )
+        objects.append(
+            physics_object_from_model(
+                child_model, units=units, density_kg_m3=density_kg_m3, fast=fast
+            )
+        )
+    assembly_by_id = {assembly.id: assembly for assembly in model.assemblies}
+
+    def node(assembly: ModelAssembly, ancestors: frozenset[str]) -> SceneNode:
+        if assembly.id in ancestors:
+            raise ValueError("source assembly hierarchy contains a cycle")
+        lineage = ancestors | {assembly.id}
+        return SceneNode(
+            id=assembly.id,
+            name=assembly.name,
+            part_ids=assembly.part_ids,
+            children=tuple(
+                node(assembly_by_id[child], lineage)
+                for child in assembly.child_ids
+                if child in assembly_by_id
+            ),
+        )
+
+    roots = tuple(
+        node(assembly, frozenset()) for assembly in model.assemblies if assembly.parent_id is None
+    )
+    return PhysicsScene(
+        **{
+            field.name: getattr(aggregate, field.name)
+            for field in aggregate.__dataclass_fields__.values()
+        },
+        objects=tuple(objects),
+        hierarchy=roots,
+    )
+
+
 def physics_object_from_model(
     model: RealityModel,
     *,
     units: str | None = None,
     density_kg_m3: float | None = None,
+    fast: bool = False,
 ) -> PhysicsObject:
     """Interpret an existing parsed model without modifying or copying it."""
     if units is not None:
@@ -157,21 +311,25 @@ def physics_object_from_model(
     if density is None and material_source == "name-heuristic" and material is not None:
         density = _NAME_DENSITIES[material]
 
-    volume_values = [part.volume for part in model.parts]
+    volume_values = [None if fast else part.volume for part in model.parts]
     volume: float | None = sum(value for value in volume_values if value is not None)
     if any(value is None for value in volume_values):
         volume = None
-    areas = [part.surface_area for part in model.parts]
+    areas = [_sampled_area(part) if fast else part.surface_area for part in model.parts]
     area: float | None = sum(value for value in areas if value is not None)
     if any(value is None for value in areas):
         area = None
 
     mass = None
+    mass_source: Literal["declared", "estimated", "unknown"] = "unknown"
     if volume is not None and effective_units in _METRES_PER_UNIT and density is not None:
         mass = volume * _METRES_PER_UNIT[effective_units] ** 3 * density
-    inertia = _mesh_inertia(model, effective_units, density) if mass is not None else None
+        mass_source = "estimated"
+    inertia = (
+        _mesh_inertia(model, effective_units, density) if mass is not None and not fast else None
+    )
 
-    centers = [part.center_of_mass for part in model.parts]
+    centers = [] if fast else [part.center_of_mass for part in model.parts]
     center: Vector3 | None = None
     if volume is not None and volume > 0 and all(item is not None for item in centers):
         center = tuple(
@@ -184,13 +342,53 @@ def physics_object_from_model(
             for axis in range(3)
         )  # type: ignore[assignment]
 
-    closed = tuple(
-        bool(part.solid.Solids()) if part.solid is not None else bool(part._mesh.is_watertight)
+    declared = model.metadata.get("declared_inertias")
+    source_links = {
+        str(part.metadata.get("source_link"))
         for part in model.parts
-        if part.solid is not None or part._mesh is not None
+        if part.metadata.get("source_link") is not None
+    }
+    if (
+        isinstance(declared, Mapping)
+        and source_links
+        and all(isinstance(declared.get(link), DeclaredInertia) for link in source_links)
+    ):
+        entries = [cast(DeclaredInertia, declared[link]) for link in sorted(source_links)]
+        mass = sum(entry.mass_kg for entry in entries)
+        mass_source = "declared"
+        center = cast(
+            Vector3,
+            tuple(
+                sum(entry.mass_kg * entry.centre_of_mass_m[axis] for entry in entries) / mass
+                for axis in range(3)
+            ),
+        )
+        if all(entry.tensor_kg_m2 is not None for entry in entries):
+            total: NDArray[np.float64] = np.zeros((3, 3), dtype=np.float64)
+            for entry in entries:
+                own = np.asarray(entry.tensor_kg_m2, dtype=np.float64)
+                offset = np.asarray(entry.centre_of_mass_m) - np.asarray(center)
+                total += own + entry.mass_kg * (
+                    float(np.dot(offset, offset)) * np.eye(3) - np.outer(offset, offset)
+                )
+            inertia = cast(
+                tuple[Vector3, Vector3, Vector3],
+                tuple(tuple(float(value) for value in row) for row in total),
+            )
+        else:
+            inertia = None
+
+    closed = (
+        ()
+        if fast
+        else tuple(
+            bool(part.solid.Solids()) if part.solid is not None else bool(part._mesh.is_watertight)
+            for part in model.parts
+            if part.solid is not None or part._mesh is not None
+        )
     )
     watertight = all(closed) if closed else None
-    candidates = _thin_part_candidates(model)
+    candidates = () if fast else _thin_part_candidates(model)
     limitations = [
         "Weak-point screening uses whole-part aspect ratios, not stress analysis.",
         "No support surface or load case was supplied; balance and failure cannot be verified.",
@@ -204,7 +402,7 @@ def physics_object_from_model(
         limitations.append("Source units are unknown; absolute mass cannot be estimated.")
     if volume is None:
         limitations.append("At least one part lacks a valid closed volume.")
-    if density is None:
+    if density is None and mass_source != "declared":
         limitations.append("No density was supplied or defensibly inferred from a part name.")
     if material_source == "name-heuristic":
         limitations.append(
@@ -212,6 +410,16 @@ def physics_object_from_model(
         )
     elif material_source == "source-name":
         limitations.append("Source visual material name is not verified mechanical material data.")
+    if fast:
+        limitations.append(
+            "Fast mode samples approximately 10% of mesh triangles for surface area, "
+            "skips geometry-derived volume/inertia, watertightness and weak-point screening; "
+            "the file is still fully parsed."
+        )
+    if mass_source == "declared":
+        limitations.append(
+            "Mass and inertial centre come from SDF declarations, not geometry estimates."
+        )
     summary = (
         f"{len(model.parts)}-part {model.format.upper()} model; units: {effective_units}; "
         f"volume: {volume if volume is not None else 'unknown'}; "
@@ -237,7 +445,31 @@ def physics_object_from_model(
         balance="unknown",
         summary=summary,
         limitations=tuple(limitations),
+        fast=fast,
+        mass_source=mass_source,
+        analysis_sample_fraction=_sample_fraction(model) if fast else None,
     )
+
+
+def _sample_fraction(model: RealityModel) -> float | None:
+    counts = [len(part._mesh.faces) for part in model.parts if part._mesh is not None]
+    total = sum(counts)
+    if not total:
+        return None
+    return sum((count + 9) // 10 for count in counts) / total
+
+
+def _sampled_area(part: ModelPart) -> float | None:
+    if part._mesh is None or len(set(part.transform.scale)) != 1:
+        return None
+    faces = np.asarray(part._mesh.faces, dtype=np.int64)
+    vertices = np.asarray(part._mesh.vertices, dtype=np.float64)
+    if len(faces) == 0:
+        return None
+    sample = vertices[faces[::10]]
+    vectors = np.cross(sample[:, 1] - sample[:, 0], sample[:, 2] - sample[:, 0])
+    sampled_area = 0.5 * float(np.linalg.norm(vectors, axis=1).sum())
+    return sampled_area * len(faces) / len(sample) * part.transform.scale[0] ** 2
 
 
 def _material_from_names(

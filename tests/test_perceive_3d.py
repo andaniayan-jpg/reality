@@ -84,10 +84,11 @@ def test_open_shell_never_gets_volume_or_mass(tmp_path: Path) -> None:
 def test_blend_is_never_silently_parsed_as_geometry(tmp_path: Path) -> None:
     path = tmp_path / "model.blend"
     path.write_bytes(b"BLENDER-vfake")
-    with pytest.raises(reality.BlenderConversionRequired) as caught:
-        reality.perceive.from_3d(path)
-    assert not caught.value.output.exists()
-    caught.value.script.unlink()
+    result = reality.perceive.from_3d(path)
+    assert result.supported is False
+    assert result.model is None
+    assert result.blend_export_script is not None
+    assert not (tmp_path / "model-reality.gltf").exists()
 
 
 def test_reason_predict_refuses_unverified_failure_claim(tmp_path: Path) -> None:
@@ -301,14 +302,11 @@ def test_usd_reads_real_stage_mesh_and_hierarchy(tmp_path: Path, suffix: str) ->
 def test_blend_requires_reviewed_manual_export(tmp_path: Path) -> None:
     path = tmp_path / "scene.blend"
     path.write_bytes(b"BLENDER-v2-test")
-    with pytest.raises(reality.BlenderConversionRequired) as caught:
-        reality.perceive.from_3d(path)
-    instruction = caught.value
-    assert instruction.source == path
-    assert instruction.output == tmp_path / "scene-reality.obj"
-    assert "--disable-autoexec" in instruction.command
-    assert "bpy.ops.wm.obj_export" in instruction.script.read_text(encoding="utf-8")
-    instruction.script.unlink()
+    result = reality.perceive.from_3d(path)
+    assert result.supported is False
+    assert result.blend_export_script is not None
+    assert "GLTF_EMBEDDED" in result.blend_export_script
+    assert "bpy.ops.export_scene.gltf" in result.blend_export_script
 
 
 def test_assimp_obj_conversion_rejects_nontriangular_faces() -> None:
@@ -328,6 +326,10 @@ def test_assimp_obj_conversion_rejects_nontriangular_faces() -> None:
 def test_assimp_dependency_failure_is_actionable(tmp_path: Path) -> None:
     path = tmp_path / "model.fbx"
     path.write_bytes(b"not a valid FBX file")
-    with pytest.raises(reality.ModelFileError) as caught:
-        reality.perceive.from_3d(path)
-    assert "native libassimp" in str(caught.value) or "could not parse" in str(caught.value)
+    try:
+        result = reality.perceive.from_3d(path)
+    except reality.ModelFileError as error:
+        assert "could not parse" in str(error)
+    else:
+        assert result.supported is False
+        assert result.install_hint == "pip install reality[assimp]"

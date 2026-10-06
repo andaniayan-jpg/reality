@@ -70,7 +70,7 @@ from ._physics import (
     StabilityResult,
     UnsupportedPhysicsOperationError,
 )
-from ._physics_object import PhysicsObject, WeakPoint
+from ._physics_object import PhysicsObject, PhysicsScene, SceneNode, WeakPoint
 from ._provenance import ProvenanceEntry, WorldLedger, WorldProvenance, provenance_for
 from ._providers.base import (
     AIResponse,
@@ -221,6 +221,8 @@ __all__ = [
     "ObjectNotFoundError",
     "PhysicalProperties",
     "PhysicsObject",
+    "PhysicsScene",
+    "SceneNode",
     "PositionSearchChange",
     "ProvenanceEntry",
     "PhysicsBackendUnavailableError",

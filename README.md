@@ -31,7 +31,13 @@ OBJ, STL, PLY, GLB and glTF use Trimesh; STEP/STP/IGES retain B-reps with the
 optional `cad` extra. URDF and SDF read supported link geometry and declared
 joint hierarchy at the zero-joint pose. Static mesh USD needs the `usd` extra;
 FBX/DAE/3DS need the `assimp` extra **plus native libassimp**. Native BLEND is
-not parsed; Reality generates a script for a reviewed Blender export.
+not parsed; Reality returns a script for a reviewed embedded-glTF export.
+Multi-component files return `PhysicsScene`, whose `.objects` share source
+geometry and whose `.hierarchy` retains source nodes. SDF-declared mass,
+inertia and joint limits override estimates. Missing optional backends return
+`supported=False` with an `install_hint`; import never runs `pip` silently.
+`on_progress` reports preflight/parser stages; `fast=True` samples mesh surface
+area but does not promise a fixed runtime or stream every backend format.
 `reason.predict` above is a narrow sampled axial-yield screen, not FEA or a
 general failure verdict. Without sufficient evidence it returns `None` for
 `will_fail` and `safety_factor`. `from_3d(..., enrich=True)` may

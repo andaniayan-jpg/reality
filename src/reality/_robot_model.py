@@ -32,6 +32,20 @@ class DeclaredJoint:
     child: str
     axis: Vector3
     origin: Transform
+    lower_limit: float | None = None
+    upper_limit: float | None = None
+    effort_limit: float | None = None
+    velocity_limit: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class DeclaredInertia:
+    """SDF-provided link inertial properties in world coordinates at zero pose."""
+
+    link: str
+    mass_kg: float
+    centre_of_mass_m: Vector3
+    tensor_kg_m2: tuple[Vector3, Vector3, Vector3] | None
 
 
 def _numbers(text: str | None, count: int, label: str) -> tuple[float, ...]:
@@ -260,6 +274,51 @@ def _sdf_pose(element: ET.Element) -> Transform:
     return Transform(position=cast(Vector3, values[:3]), rotation=cast(Vector3, values[3:]))
 
 
+def _sdf_optional_number(node: ET.Element, path: str) -> float | None:
+    text = node.findtext(path)
+    if text is None:
+        return None
+    return _numbers(text, 1, path)[0]
+
+
+def _sdf_inertia(link: ET.Element, link_matrix: NDArray[np.float64]) -> DeclaredInertia | None:
+    inertial = link.find("inertial")
+    if inertial is None:
+        return None
+    mass = _sdf_optional_number(inertial, "mass")
+    if mass is None or mass <= 0:
+        raise ModelFileError("SDF inertial mass must be positive")
+    world_matrix = link_matrix @ _sdf_pose(inertial).matrix
+    center = cast(Vector3, tuple(float(value) for value in world_matrix[:3, 3]))
+    inertia = inertial.find("inertia")
+    tensor: tuple[Vector3, Vector3, Vector3] | None = None
+    if inertia is not None:
+        values = [
+            _sdf_optional_number(inertia, label)
+            for label in ("ixx", "ixy", "ixz", "iyy", "iyz", "izz")
+        ]
+        if any(value is None for value in values):
+            raise ModelFileError("SDF inertia requires all six tensor components")
+        ixx, ixy, ixz, iyy, iyz, izz = cast(
+            tuple[float, float, float, float, float, float], tuple(values)
+        )
+        local = np.asarray(((ixx, ixy, ixz), (ixy, iyy, iyz), (ixz, iyz, izz)), dtype=float)
+        if np.min(np.linalg.eigvalsh(local)) < -1e-9:
+            raise ModelFileError("SDF inertia tensor must be positive semidefinite")
+        rotation = world_matrix[:3, :3]
+        world_tensor = rotation @ local @ rotation.T
+        tensor = cast(
+            tuple[Vector3, Vector3, Vector3],
+            tuple(tuple(float(value) for value in row) for row in world_tensor),
+        )
+    return DeclaredInertia(
+        link=link.get("name") or "",
+        mass_kg=mass,
+        centre_of_mass_m=center,
+        tensor_kg_m2=tensor,
+    )
+
+
 def _sdf_geometry(geometry: ET.Element) -> ET.Element:
     """Translate the supported SDF primitive tags to the shared mesh reader."""
     adapted = ET.Element("geometry")
@@ -332,6 +391,10 @@ def open_sdf(source: Path, *, max_bytes: int) -> RealityModel:
                 child=child,
                 axis=cast(Vector3, _numbers(axis_text, 3, "joint axis")),
                 origin=_sdf_pose(node),
+                lower_limit=_sdf_optional_number(node, "axis/limit/lower"),
+                upper_limit=_sdf_optional_number(node, "axis/limit/upper"),
+                effort_limit=_sdf_optional_number(node, "axis/limit/effort"),
+                velocity_limit=_sdf_optional_number(node, "axis/limit/velocity"),
             )
         )
         parent_of[child] = parent
@@ -346,8 +409,12 @@ def open_sdf(source: Path, *, max_bytes: int) -> RealityModel:
             current = parent_of[current]
     parts: list[ModelPart] = []
     part_ids: dict[str, list[str]] = {name: [] for name in by_name}
+    declared_inertias: dict[str, DeclaredInertia] = {}
     for name, link in by_name.items():
         link_matrix = model_pose.matrix @ _sdf_pose(link).matrix
+        inertial = _sdf_inertia(link, link_matrix)
+        if inertial is not None:
+            declared_inertias[name] = inertial
         visual = link.find("visual/material/script/name")
         visual_material = (
             _VisualMaterial(visual.text.strip()) if visual is not None and visual.text else None
@@ -407,6 +474,7 @@ def open_sdf(source: Path, *, max_bytes: int) -> RealityModel:
             "backend": "sdf-xml+trimesh",
             "unit_source": "SDF SI metres convention",
             "joints": tuple(joints),
+            "declared_inertias": declared_inertias,
             "pose": "declared zero configuration",
             "file_size": len(contents),
         },

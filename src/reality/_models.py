@@ -145,7 +145,12 @@ class Bounds:
 
     def transformed(self, transform: Transform) -> Bounds:
         """Return the enclosing world-axis-aligned bounds after a transform."""
-        return Bounds.from_points(np.asarray([transform.apply(corner) for corner in self.corners]))
+        if transform == Transform():
+            return self
+        matrix = transform.matrix
+        corners = np.asarray(self.corners, dtype=np.float64)
+        transformed = corners @ matrix[:3, :3].T + matrix[:3, 3]
+        return Bounds.from_points(transformed)
 
     def intersects(self, other: Bounds) -> bool:
         return all(

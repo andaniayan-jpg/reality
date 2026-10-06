@@ -26,6 +26,24 @@ class BlenderConversionRequired(ModelFileError):
         )
 
 
+def gltf_export_script(source: Path) -> str:
+    """Return a reviewable Blender script; never execute Blender on import."""
+    if not source.is_file():
+        raise FileNotFoundError(source)
+    target = source.with_name(f"{source.stem}-reality.gltf")
+    return (
+        "# Review this script and run it only with a trusted .blend file.\n"
+        "import bpy\n"
+        "from pathlib import Path\n"
+        f"source = Path({str(source)!r})\n"
+        f"target = Path({str(target)!r})\n"
+        "if target.exists():\n"
+        "    raise FileExistsError(target)\n"
+        "bpy.ops.wm.open_mainfile(filepath=str(source), load_ui=False)\n"
+        "bpy.ops.export_scene.gltf(filepath=str(target), export_format='GLTF_EMBEDDED')\n"
+    )
+
+
 def conversion_instructions(source: Path) -> BlenderConversionRequired:
     if not source.is_file():
         raise FileNotFoundError(source)

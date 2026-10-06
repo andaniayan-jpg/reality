@@ -50,6 +50,7 @@ _CAD_FORMATS = frozenset({"step", "stp", "iges", "igs"})
 _ROBOT_FORMATS = frozenset({"urdf", "sdf"})
 _USD_FORMATS = frozenset({"usd", "usda", "usdc"})
 _ASSIMP_FORMATS = frozenset({"fbx", "dae", "3ds"})
+_EAGER_GRAPH_PART_LIMIT = 32
 _UNIT_FACTORS: Mapping[str, float] = MappingProxyType(
     {"m": 1.0, "mm": 0.001, "cm": 0.01, "um": 0.000001, "in": 0.0254, "ft": 0.3048}
 )
@@ -511,7 +512,7 @@ def open_model(
             model = open_assimp(source, suffix)
         else:
             model = _open_mesh(source, suffix)
-    except ModelFileError:
+    except (ModelFileError, CADBackendUnavailableError):
         raise
     except Exception as error:
         raise ModelFileError(
@@ -553,12 +554,37 @@ def _open_mesh(source: Path, suffix: str) -> RealityModel:
     if not parts:
         raise ModelFileError(f"{source}: contains no mesh geometry")
     units, unit_source = _mesh_units(source, suffix)
+    node_names = set(str(node) for node in scene.graph.nodes)
+    parent_map = {
+        str(node): str(parent)
+        for node, parent in scene.graph.transforms.parents.items()
+        if str(node) in node_names and str(parent) in node_names
+    }
+    children: dict[str, list[str]] = {name: [] for name in node_names}
+    for child, parent in parent_map.items():
+        children[parent].append(child)
+    direct_parts: dict[str, list[str]] = {name: [] for name in node_names}
+    for part in parts:
+        direct_parts[str(part.metadata["source_node"])].append(part.id)
+    roots = sorted(node_names - parent_map.keys())
     assemblies = (
         ModelAssembly(
             name=source.stem,
             id="assembly-root",
             part_ids=tuple(part.id for part in parts),
+            child_ids=tuple(f"node:{name}" for name in roots),
             metadata={"name_source": "file"},
+        ),
+        *(
+            ModelAssembly(
+                name=name,
+                id=f"node:{name}",
+                part_ids=tuple(direct_parts[name]),
+                child_ids=tuple(f"node:{child}" for child in sorted(children[name])),
+                parent_id=f"node:{parent_map[name]}" if name in parent_map else "assembly-root",
+                metadata={"name_source": "mesh-node"},
+            )
+            for name in sorted(node_names)
         ),
     )
     return _model_from_parts(
@@ -644,6 +670,7 @@ def _open_iges(source: Path, suffix: str) -> RealityModel:
             id=f"part-{index}",
             transform=Transform(),
             bounds=_cad_bounds(entity),
+            _mesh=_tessellate_cad(entity),
             solid=entity,
             metadata={"name_source": "generated", "brep_kind": entity.ShapeType()},
         )
@@ -672,6 +699,17 @@ def _open_iges(source: Path, suffix: str) -> RealityModel:
     )
 
 
+def _tessellate_cad(shape: Any) -> trimesh.Trimesh:
+    vertices, triangles = shape.tessellate(0.1)
+    if not vertices or not triangles:
+        raise ModelFileError("IGES B-rep surface could not be tessellated")
+    return trimesh.Trimesh(
+        vertices=np.asarray([vertex.toTuple() for vertex in vertices], dtype=np.float64),
+        faces=np.asarray(triangles, dtype=np.int64),
+        process=False,
+    )
+
+
 def _model_from_parts(
     source: Path,
     format_name: str,
@@ -689,7 +727,7 @@ def _model_from_parts(
         assemblies=tuple(assemblies),
         metadata={
             **metadata,
-            "graph_materialization": "eager" if len(parts) <= 250 else "lazy",
+            "graph_materialization": "eager" if len(parts) <= _EAGER_GRAPH_PART_LIMIT else "lazy",
         },
         source=source,
         _world=world,
@@ -709,7 +747,7 @@ def _world_for_parts(parts: Sequence[ModelPart], units: str) -> World:
     # Large models retain graph indexes/predicate capacity and can be refreshed
     # selectively instead of turning import into an accidental all-pairs job.
     world = World(objects, units=units, build_graph=False)
-    if len(parts) <= 250:
+    if len(parts) <= _EAGER_GRAPH_PART_LIMIT:
         world.graph.refresh_all()
     return world
 
@@ -772,7 +810,8 @@ def _step_units(source: Path) -> tuple[str, str]:
 
 
 def _validate_content(source: Path, suffix: str) -> None:
-    prefix = source.read_bytes()[:4096]
+    with source.open("rb") as stream:
+        prefix = stream.read(4096)
     if not prefix:
         raise ModelFileError(f"{source}: empty file")
     if suffix == "glb" and prefix[:4] != b"glTF":

@@ -2,18 +2,25 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 
-from reality._blender_conversion import conversion_instructions
+from reality._blender_conversion import gltf_export_script
 from reality._core.router import ModelRouter
-from reality._file_model import open_model
-from reality._physics_object import PhysicsObject, physics_object_from_model
+from reality._file_model import CADBackendUnavailableError, ModelFileError, open_model
+from reality._physics_object import (
+    PhysicsObject,
+    physics_object_from_model,
+    physics_scene_from_model,
+    unsupported_physics_object,
+)
 from reality._providers.base import AIResponse, AITask
 
 from .copilot import _default_router
 
 MAX_IMAGE_BYTES = 20 * 1024 * 1024
+LARGE_FILE_THRESHOLD_BYTES = 50 * 1024 * 1024
 
 
 def from_3d(
@@ -24,6 +31,8 @@ def from_3d(
     max_bytes: int = 512 * 1024 * 1024,
     enrich: bool = False,
     router: ModelRouter | None = None,
+    on_progress: Callable[[int, str], None] | None = None,
+    fast: bool = False,
 ) -> PhysicsObject:
     """Read a 3D/CAD file into a measured, uncertainty-aware physical object.
 
@@ -32,11 +41,50 @@ def from_3d(
     adds advisory model text, never overwriting measured fields. OBJ/STL/PLY
     usually need an explicit ``units`` value for a meaningful mass estimate.
     """
-    if Path(path).suffix.lower() == ".blend":
-        raise conversion_instructions(Path(path))
-    model = open_model(path, max_bytes=max_bytes)
-    obj = physics_object_from_model(model, units=units, density_kg_m3=density_kg_m3)
-    if not enrich:
+    source = Path(path)
+    if on_progress:
+        on_progress(0, "Validating input")
+    if on_progress and source.is_file() and source.stat().st_size > LARGE_FILE_THRESHOLD_BYTES:
+        size = source.stat().st_size
+        scanned = 0
+        with source.open("rb") as stream:
+            while chunk := stream.read(4 * 1024 * 1024):
+                scanned += len(chunk)
+                on_progress(min(30, int(scanned * 30 / size)), "Scanning large input")
+    if source.suffix.lower() == ".blend":
+        script = gltf_export_script(source)
+        result = unsupported_physics_object(
+            message="Run the included script inside Blender, then pass the .gltf file",
+            blend_export_script=script,
+        )
+        if on_progress:
+            on_progress(100, "Conversion instructions ready")
+        return result
+    try:
+        model = open_model(path, max_bytes=max_bytes)
+    except CADBackendUnavailableError as error:
+        return unsupported_physics_object(
+            message=str(error), install_hint="pip install reality[cad]"
+        )
+    except ModelFileError as error:
+        suffix = source.suffix.lower()
+        hint = (
+            "pip install reality[assimp]"
+            if suffix in {".fbx", ".dae", ".3ds"}
+            else "pip install reality[usd]"
+            if suffix in {".usd", ".usda", ".usdc"}
+            else None
+        )
+        if hint and ("requires" in str(error) or "support requires" in str(error)):
+            return unsupported_physics_object(message=str(error), install_hint=hint)
+        raise
+    if on_progress:
+        on_progress(70, "Geometry parsed")
+    interpreter = physics_scene_from_model if len(model.parts) > 1 else physics_object_from_model
+    obj = interpreter(model, units=units, density_kg_m3=density_kg_m3, fast=fast)
+    if not enrich or fast:
+        if on_progress:
+            on_progress(100, "Physical interpretation ready")
         return obj
     selected = router or _default_router()
     prompt = (
@@ -47,6 +95,8 @@ def from_3d(
         f"Known limitations: {obj.limitations}"
     )
     response = selected.route_feature("reason.predict", AITask(prompt=prompt))
+    if on_progress:
+        on_progress(100, "Optional commentary ready")
     return replace(obj, ai_notes=response.text)
 
 

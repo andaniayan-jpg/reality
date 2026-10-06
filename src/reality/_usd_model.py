@@ -7,6 +7,7 @@ this adapter in a resource-limited worker, never directly in an API process.
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,12 @@ from numpy.typing import NDArray
 
 from ._file_model import ModelAssembly, ModelFileError, ModelPart, RealityModel, _model_from_parts
 from ._models import Bounds, Transform
+
+
+@dataclass(frozen=True, slots=True)
+class _UsdMaterialLabel:
+    name: str
+    path: str
 
 
 def _triangles(
@@ -59,11 +66,17 @@ def _triangles(
 
 def open_usd(source: Path) -> RealityModel:
     try:
-        from pxr import Usd, UsdGeom
+        from pxr import Usd, UsdGeom, UsdShade
     except ImportError as error:
         raise ModelFileError("USD support requires: pip install reality[usd]") from error
-    if source.read_bytes()[:5] == b"#usda" and b"@" in source.read_bytes():
-        raise ModelFileError("USD external asset references require an isolated import worker")
+    with source.open("rb") as stream:
+        is_ascii = stream.read(5) == b"#usda"
+        if is_ascii:
+            while chunk := stream.read(1024 * 1024):
+                if b"@" in chunk:
+                    raise ModelFileError(
+                        "USD external asset references require an isolated import worker"
+                    )
     try:
         stage = Usd.Stage.Open(str(source), load=Usd.Stage.LoadNone)
     except Exception as error:
@@ -103,14 +116,22 @@ def open_usd(source: Path) -> RealityModel:
         path = prim.GetPath().pathString
         part_id = f"part-{len(parts) + 1}"
         source_paths[part_id] = path
+        material, _binding = UsdShade.MaterialBindingAPI(prim).ComputeBoundMaterial()
+        material_path = material.GetPath().pathString if material else None
+        material_label = (
+            _UsdMaterialLabel(material.GetPrim().GetName(), material_path)
+            if material_path is not None
+            else None
+        )
         parts.append(
             ModelPart(
                 name=prim.GetName(),
                 id=part_id,
                 transform=transform,
                 bounds=Bounds.from_points(np.asarray(mesh.bounds)).transformed(transform),
+                material=material_label,
                 _mesh=mesh,
-                metadata={"source_prim": path},
+                metadata={"source_prim": path, "material_path": material_path},
             )
         )
     if not parts:

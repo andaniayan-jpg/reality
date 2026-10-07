@@ -33,9 +33,11 @@ from ._blender_conversion import BlenderConversionRequired
 from ._branch import WorldBranch
 from ._bridge import BridgeRequestError, RealityBridge, serve_jsonl
 from ._core.auth import detect_mode, login, logout
+from ._core.config import configure
 from ._core.detector import HardwareProfile, detect_hardware
 from ._core.installer import LocalSetupPlan, local_setup_plan
 from ._core.router import ModelRouter
+from ._core.status import RuntimeStatus, status
 from ._editing import EditOperation, EditOperationError, EditResult, EditSession, EditValidation
 from ._explore import ExplorationResult, PositionSearchChange, position
 from ._file_model import (
@@ -117,10 +119,10 @@ from .integrations import (
     register_addon,
     unregister_addon,
 )
-from .layers import perceive, reason, twin
+from .layers import agents, generate, perceive, reason, simulate, twin
 from .layers import reality_capture as reality
 from .layers.copilot import copilot
-from .layers.twin import VideoObservations
+from .layers.twin import DigitalTwin, VideoObservations
 from .predicates import (
     Condition,
     Objective,
@@ -146,14 +148,21 @@ __all__ = [
     "copilot",
     "detect_hardware",
     "detect_mode",
+    "configure",
     "local_setup_plan",
     "login",
     "logout",
+    "status",
+    "RuntimeStatus",
+    "agents",
+    "generate",
     "perceive",
     "reason",
+    "simulate",
     "reality",
     "twin",
     "VideoObservations",
+    "DigitalTwin",
     "AmbiguousObjectError",
     "AccelerationUnavailableError",
     "AgentAction",

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -13,16 +13,47 @@ from reality._providers.base import AIResponse
 from .perceive import from_image
 
 MAX_VIDEO_BYTES = 100 * 1024 * 1024
+# Retained compatibility cap. Increasing capture volume changes privacy and
+# latency characteristics, so a future API will need an explicit opt-in.
 MAX_FRAMES = 4
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class VideoObservations:
     """Descriptions of sampled frames, not a geometric or predictive digital twin."""
 
     source: Path
     frames: tuple[AIResponse, ...]
     sampled_frames: int
+    sensor_data: dict[str, object] = field(default_factory=dict)
+    _prediction: dict[str, object] | None = field(default=None, repr=False)
+
+    def predict(self, days: int = 30) -> dict[str, object]:
+        """Return an honest non-geometric forecast boundary for video evidence."""
+        if days < 1:
+            raise ValueError("days must be positive")
+        self._prediction = {
+            "predicted_changes": [],
+            "maintenance_alerts": ["No calibrated geometry or degradation model is available."],
+            "confidence": "insufficient evidence",
+            "days": days,
+        }
+        return self._prediction
+
+    def detect_anomalies(self, threshold: float = 0.05) -> list[dict[str, object]]:
+        if not 0 <= threshold <= 1:
+            raise ValueError("threshold must be between zero and one")
+        if self._prediction is None:
+            self.predict()
+        return []
+
+    def sync(self, data: dict[str, object]) -> None:
+        self.sensor_data.update(data)
+
+
+# The compatibility name makes clear that this is observational until a caller
+# provides calibrated 3D geometry; no scene is fabricated from video pixels.
+DigitalTwin = VideoObservations
 
 
 def _extract_frames(source: Path, destination: Path, limit: int) -> tuple[Path, ...]:
@@ -71,7 +102,7 @@ def from_video(
     max_frames: int = MAX_FRAMES,
     router: ModelRouter | None = None,
 ) -> VideoObservations:
-    """Analyze up to four sampled frames from a user-supplied MP4 file.
+    """Analyze at most four one-per-second frames from a user-supplied MP4 file.
 
     The original video is not uploaded; each extracted frame follows the
     configured image-perception route, which may use a cloud vision service.

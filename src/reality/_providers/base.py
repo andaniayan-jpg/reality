@@ -38,12 +38,24 @@ class AITask:
             raise ValueError("vision tasks require an image")
 
 
-@dataclass(frozen=True, slots=True)
-class AIResponse:
+class AIResponse(str):
     """Model text, not a measured or simulated physical-world result."""
+
+    """String-compatible advisory response.
+
+    Keeping ``text`` and ``mode`` preserves the original structured API, while
+    inheriting from :class:`str` makes the public conversational entry point
+    naturally usable anywhere a plain answer is expected.
+    """
 
     text: str
     mode: Literal["local", "online"]
+
+    def __new__(cls, text: str, mode: Literal["local", "online"]) -> AIResponse:
+        value = str.__new__(cls, text)
+        value.text = text
+        value.mode = mode
+        return value
 
     def __str__(self) -> str:
         return self.text

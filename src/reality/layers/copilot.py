@@ -35,6 +35,13 @@ def _default_router() -> ModelRouter:
     return ModelRouter(providers, local_models=models)
 
 
+_history: list[dict[str, str]] = []
+_UNAVAILABLE = (
+    "The local AI assistant is unavailable. Start your configured local AI service "
+    "and install a supported model, then try again."
+)
+
+
 def copilot(
     prompt: str,
     obj: PhysicsObject | None = None,
@@ -43,18 +50,55 @@ def copilot(
     realtime: bool = False,
     router: ModelRouter | None = None,
 ) -> AIResponse:
-    """Ask a model for guidance; never treat its text as measured physics."""
+    """Ask a grounded advisory question without turning model text into evidence.
+
+    Provider failures are deliberately converted into an actionable plain string.
+    The legacy ``.text`` and ``.mode`` attributes remain available on the returned
+    string-compatible :class:`AIResponse`.
+    """
     if obj is not None:
         if not isinstance(obj, PhysicsObject):
-            raise TypeError("copilot context must be a PhysicsObject")
+            return AIResponse("Copilot context must be a PhysicsObject or PhysicsScene.", "local")
         prompt = (
             f"Question: {prompt}\nAuthoritative imported geometry: {obj.summary}\n"
             f"Evidence limits: {obj.limitations}\n"
             "Do not assert a physical failure, material grade or computed stress "
             "without sufficient data and validated analysis."
         )
-    task = AITask(prompt=prompt, complexity=complexity, realtime=realtime)
-    selected = router or _default_router()
-    if router is not None or detect_mode() == "online":
-        return selected.route(task)
-    return selected.route_feature("copilot", task)
+    history = "\n".join(f"{item['role']}: {item['content']}" for item in _history[-8:])
+    grounded_prompt = (
+        "You are a physics-aware advisory assistant. Do not present estimates as "
+        "measurements or make safety-critical conclusions without evidence.\n"
+        f"Conversation so far:\n{history}\nUser: {prompt}"
+        if history
+        else "You are a physics-aware advisory assistant. Do not present estimates as "
+        f"measurements or make safety-critical conclusions without evidence.\nUser: {prompt}"
+    )
+    try:
+        task = AITask(prompt=grounded_prompt, complexity=complexity, realtime=realtime)
+        selected = router or _default_router()
+        response = (
+            selected.route(task)
+            if router is not None or detect_mode() == "online"
+            else selected.route_feature("copilot", task)
+        )
+    except (AIUnavailableError, ValueError, OSError):
+        # Preserve the established cloud-mode contract: an explicitly selected
+        # undeployed cloud gateway fails closed instead of silently changing mode.
+        if router is None and detect_mode() == "online":
+            raise
+        return AIResponse(_UNAVAILABLE, "local")
+    _history.extend(
+        ({"role": "user", "content": prompt}, {"role": "assistant", "content": response.text})
+    )
+    return response
+
+
+def _reset() -> None:
+    """Clear the in-memory session history for :func:`copilot`."""
+    _history.clear()
+
+
+# A method attribute keeps ``reality.copilot.reset()`` compact while the
+# callable remains compatible with the original function-shaped API.
+copilot.reset = _reset  # type: ignore[attr-defined]

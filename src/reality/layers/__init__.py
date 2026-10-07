@@ -1,5 +1,5 @@
-"""Optional high-level AI entry points built on the provider-neutral router."""
+"""Optional high-level layers with explicit, side-effect-free configuration."""
 
-from . import reality_capture, reason, twin
+from . import agents, generate, reality_capture, reason, simulate, twin
 
-__all__ = ["reality_capture", "reason", "twin"]
+__all__ = ["agents", "generate", "reality_capture", "reason", "simulate", "twin"]

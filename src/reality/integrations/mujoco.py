@@ -249,7 +249,7 @@ class MuJoCoSceneIntegration:
             if local_bounds is None:
                 skipped.append(f"{name}: unsupported MuJoCo geom type")
                 continue
-            matrix = np.eye(4, dtype=np.float64)
+            matrix: NDArray[np.float64] = np.eye(4, dtype=np.float64)
             matrix[:3, :3] = np.asarray(data.geom_xmat[geom_id], dtype=np.float64).reshape(3, 3)
             matrix[:3, 3] = np.asarray(data.geom_xpos[geom_id], dtype=np.float64)
             try:
@@ -396,7 +396,7 @@ def _validated_controls(mujoco: Any, model: Any, controls: Mapping[str, float]) 
 
 
 def _body_state(mujoco: Any, model: Any, data: Any, body_id: int) -> MuJoCoBodyState:
-    matrix = np.eye(4, dtype=np.float64)
+    matrix: NDArray[np.float64] = np.eye(4, dtype=np.float64)
     matrix[:3, :3] = np.asarray(data.xmat[body_id], dtype=np.float64).reshape(3, 3)
     matrix[:3, 3] = np.asarray(data.xpos[body_id], dtype=np.float64)
     name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY, body_id) or f"body-{body_id}"

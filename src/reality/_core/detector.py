@@ -38,7 +38,10 @@ def _ram_bytes() -> int | None:
 
         status = MemoryStatus()
         status.length = ctypes.sizeof(status)
-        success = ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status))
+        windll = getattr(ctypes, "windll", None)
+        if windll is None:
+            return None
+        success = windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status))
         return int(status.total_phys) if success else None
     meminfo = Path("/proc/meminfo")
     if meminfo.is_file():

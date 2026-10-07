@@ -2,7 +2,7 @@
 
 # Kept available for runtime diagnostics and wheel-install verification.
 # The package metadata in ``pyproject.toml`` is the release source of truth.
-__version__ = "0.1.0"
+__version__ = "0.2.2"
 
 from ._accelerators import AccelerationUnavailableError, WarpStatus, warp_status
 from ._agent import (

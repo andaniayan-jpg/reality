@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "reality"
-version = "0.1.0"
+version = "0.2.2"
 description = "A backend-neutral Python toolkit for programmable physical 3D and CAD worlds."
 readme = "README.md"
 requires-python = ">=3.11"

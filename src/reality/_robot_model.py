@@ -255,6 +255,7 @@ def open_urdf(source: Path, *, max_bytes: int) -> RealityModel:
             "joints": tuple(joints),
             "pose": "zero joint configuration",
             "file_size": len(contents),
+            "source_xml": contents,
         },
     )
 
@@ -477,5 +478,6 @@ def open_sdf(source: Path, *, max_bytes: int) -> RealityModel:
             "declared_inertias": declared_inertias,
             "pose": "declared zero configuration",
             "file_size": len(contents),
+            "source_xml": contents,
         },
     )

@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 import trimesh
 
-from ._file_model import ModelPart, _model_from_parts
+from ._file_model import ModelPart, RealityModel, _model_from_parts
 from ._materials import material as lookup_material
 from ._models import Bounds, Transform
 
@@ -50,6 +50,43 @@ class DiffResult:
     volume_delta: float | None
     weak_points_fixed: int | None
     improvement_score: float | None
+    weak_points_original: int | None = None
+    old_safety_factor: float | None = None
+    new_safety_factor: float | None = None
+    goal: str | None = None
+    mass_reduction_pct: float | None = None
+
+    def __post_init__(self) -> None:
+        if self.improvement_score is not None:
+            return
+        terms: list[tuple[float, float]] = []
+        if (
+            self.weak_points_original is not None
+            and self.weak_points_fixed is not None
+            and self.weak_points_original > 0
+        ):
+            terms.append((0.4, self.weak_points_fixed / self.weak_points_original))
+        if (
+            self.old_safety_factor is not None
+            and self.new_safety_factor is not None
+            and self.old_safety_factor > 0
+            and all(isfinite(value) for value in (self.old_safety_factor, self.new_safety_factor))
+        ):
+            gain = (self.new_safety_factor - self.old_safety_factor) / max(
+                self.old_safety_factor, 0.1
+            )
+            terms.append((0.4, max(-1.0, min(1.0, gain))))
+        if (
+            self.goal == "minimum_weight"
+            and self.mass_reduction_pct is not None
+            and isfinite(self.mass_reduction_pct)
+        ):
+            terms.append((0.2, max(0.0, min(1.0, self.mass_reduction_pct / 100))))
+        if terms:
+            score = sum(weight * value for weight, value in terms) / sum(
+                weight for weight, _ in terms
+            )
+            object.__setattr__(self, "improvement_score", max(0.0, min(1.0, score)))
 
 
 class PhysicsModification:
@@ -67,6 +104,7 @@ class PhysicsModification:
         self._result: PhysicsObject | None = None
         self.repair_log: list[str] = []
         self.optimization_log: list[str] = []
+        self._observations: list[str] = []
 
     @property
     def modify(self) -> PhysicsModification:
@@ -74,7 +112,7 @@ class PhysicsModification:
 
     @property
     def change_log(self) -> tuple[str, ...]:
-        return tuple(edit.description for edit in self._pending)
+        return (*tuple(edit.description for edit in self._pending), *self._observations)
 
     def _append(
         self, operation: str, description: str, **parameters: object
@@ -151,7 +189,7 @@ class PhysicsModification:
             raise PhysicsModificationError("wall_thickness must be positive and finite")
         return self._append(
             "hollow",
-            f"Hollowed axis-aligned box components with wall {wall_thickness}",
+            f"Requested hollowing with wall {wall_thickness}",
             wall_thickness=wall_thickness,
         )
 
@@ -180,12 +218,33 @@ class PhysicsModification:
             "balanced",
             "earthquake_safe",
         }:
-            raise PhysicsModificationError(f"unsupported optimization goal {goal!r}")
+            self.optimization_log.append(f"Unknown goal: {goal}")
+            return self
         if goal == "balanced" and self.source.centre_of_mass is not None:
-            x, y, z = self.source.centre_of_mass
-            self.translate(x=-x, y=-y, z=-z)
+            center = np.asarray(self.source.bounds.center)
+            offset = center - np.asarray(self.source.centre_of_mass)
+            self.translate(x=float(offset[0]), y=float(offset[1]), z=float(offset[2]))
             self.optimization_log.append(
-                "Aligned geometric centre of mass with the origin; stability is unverified"
+                f"Translated geometric centre of mass to AABB center by {tuple(offset)}; "
+                "stability is unverified"
+            )
+            return self
+        if goal == "minimum_weight":
+            self.optimization_log.append(
+                "No iterations applied: a certified load case, yield strength, support "
+                "conditions and recomputable safety factor are unavailable"
+            )
+            return self
+        if goal == "printable":
+            self.optimization_log.append(
+                "No support geometry added: print orientation, build plate and support "
+                "clearances are unspecified; downward normals alone are insufficient"
+            )
+            return self
+        if goal == "earthquake_safe":
+            self.optimization_log.append(
+                "No braces added: seismic loads, anchors, materials and connection "
+                "design are unspecified"
             )
             return self
         self.optimization_log.append(
@@ -332,6 +391,7 @@ class PhysicsModification:
         selected_material: str | None = None
         # Each part is copied only on its first geometry-changing command.
         touched: set[str] = set()
+        self._observations.clear()
         for edit in self._pending:
             parameters = edit.parameters
             if edit.operation == "material":
@@ -405,18 +465,14 @@ class PhysicsModification:
                     mesh.apply_scale(factors)
                     mesh.apply_translation(center)
                 elif edit.operation == "hollow":
-                    if not _is_axis_aligned_box(mesh):
-                        raise PhysicsModificationError(
-                            "hollow currently supports only axis-aligned closed box meshes"
+                    candidate = _hollow_convex(mesh, cast(float, parameters["wall_thickness"]))
+                    if candidate is None:
+                        self._observations.append(
+                            f"{part.name}: Hollowing reverted — result was not watertight "
+                            "or an inward offset could not be validated"
                         )
-                    wall = cast(float, parameters["wall_thickness"])
-                    inner_extent = np.asarray(mesh.extents, dtype=float) - 2 * wall
-                    if np.any(inner_extent <= 0):
-                        raise PhysicsModificationError("wall is too thick for this box")
-                    inner = trimesh.creation.box(extents=inner_extent)
-                    inner.apply_translation(mesh.bounds.mean(axis=0))
-                    inner.invert()
-                    mesh = trimesh.util.concatenate([mesh, inner])
+                        continue
+                    mesh = candidate
                 elif edit.operation == "repair":
                     before = (len(mesh.vertices), len(mesh.faces), bool(mesh.is_watertight))
                     mesh.update_faces(mesh.nondegenerate_faces())
@@ -445,7 +501,12 @@ class PhysicsModification:
             for assembly in source_model.assemblies
         )
         metadata = {**source_model.metadata, "modified": True}
-        invalidated_declarations = any(edit.operation != "material" for edit in self._pending)
+        invalidated_declarations = bool(touched) or any(
+            edit.operation in {"remove", "merge"} for edit in self._pending
+        )
+        metadata["source_model"] = source_model
+        metadata["geometry_changed"] = invalidated_declarations
+        metadata["material_changed"] = selected_material is not None
         if invalidated_declarations:
             # Source zero-pose inertias and joint frames are not automatically
             # valid after a mesh edit. Never report stale robot properties.
@@ -511,6 +572,52 @@ def _is_axis_aligned_box(mesh: trimesh.Trimesh) -> bool:
     )
 
 
+def _hollow_convex(mesh: trimesh.Trimesh, wall: float) -> trimesh.Trimesh | None:
+    """Create a closed inner cavity only when convex inward offset is verifiable.
+
+    Trimesh has no general ``offset_mesh`` API. A box uses exact extents; other
+    convex solids use inward-shifted hull halfspaces. Concave or invalid solids
+    remain unchanged instead of silently receiving an unrelated AABB cavity.
+    """
+    if not mesh.is_volume or wall <= 0 or np.any(mesh.extents <= 2 * wall):
+        return None
+    try:
+        if _is_axis_aligned_box(mesh):
+            inner = trimesh.creation.box(extents=np.asarray(mesh.extents) - 2 * wall)
+            inner.apply_translation(mesh.bounds.mean(axis=0))
+        else:
+            from scipy.spatial import ConvexHull, HalfspaceIntersection
+
+            hull = ConvexHull(np.asarray(mesh.vertices))
+            if not np.isclose(hull.volume, mesh.volume, rtol=1e-4, atol=1e-9):
+                return None
+            halfspaces = np.asarray(hull.equations, dtype=float).copy()
+            halfspaces[:, 3] += wall
+            interior = np.asarray(mesh.center_mass, dtype=float)
+            if np.any(halfspaces[:, :3] @ interior + halfspaces[:, 3] >= -1e-9):
+                return None
+            intersections = HalfspaceIntersection(halfspaces, interior).intersections
+            # Decimal OBJ coordinates can create near-identical intersection
+            # points. Deduplicate before triangulating a manifold hull.
+            vertices = np.unique(np.round(intersections, decimals=8), axis=0)
+            inner_hull = ConvexHull(vertices)
+            inner = trimesh.Trimesh(vertices=vertices, faces=inner_hull.simplices)
+            trimesh.repair.fix_normals(inner)
+            if not inner.is_volume:
+                return None
+        inner.invert()
+        candidate = trimesh.util.concatenate([mesh, inner])
+        if (
+            not candidate.is_watertight
+            or not candidate.is_volume
+            or not 0 < candidate.volume < mesh.volume
+        ):
+            return None
+        return candidate
+    except (ValueError, RuntimeError, ArithmeticError):
+        return None
+
+
 def _new_part(template: ModelPart, mesh: trimesh.Trimesh, *, name: str | None = None) -> ModelPart:
     return replace(
         template,
@@ -547,9 +654,24 @@ class PhysicsExporter:
                 "mesh export of a CAD B-rep requires explicit CAD conversion"
             )
         if suffix in {".urdf", ".sdf"}:
-            raise PhysicsModificationError(
-                "robot XML export is unavailable until joint-frame and inertial "
-                "round-trip validation exists"
+            from ._robot_export import export_robot
+
+            draft = self._source if isinstance(self._source, PhysicsModification) else None
+            source_model = (
+                draft.source.model
+                if draft is not None
+                else obj.model.metadata.get("source_model", obj.model)
+            )
+            return export_robot(
+                obj,
+                target,
+                source=cast(RealityModel, source_model),
+                geometry_changed=bool(obj.model.metadata.get("geometry_changed", False)),
+                material_changed=(
+                    any(edit.operation == "material" for edit in draft._pending)
+                    if draft is not None
+                    else bool(obj.model.metadata.get("material_changed", False))
+                ),
             )
         if suffix in {".stl", ".ply"} and len(obj.parts) != 1:
             raise PhysicsModificationError(
@@ -675,14 +797,20 @@ class PhysicsExporter:
         return target
 
     def to_godot(self, path: str | Path) -> Path:
-        raise PhysicsModificationError(
-            "Godot RigidBody3D export needs validated collision and mass data"
-        )
+        from ._scene_export import export_godot
+
+        return export_godot(self._object, Path(path))
 
     def to_ros2(self, path: str | Path) -> Path:
-        raise PhysicsModificationError(
-            "ROS 2 export needs validated joint-frame and inertial round-trip data"
+        from ._scene_export import export_ros2
+
+        target = Path(path)
+        urdf_path = target.with_suffix(".urdf")
+        self(urdf_path)
+        robot = (
+            self._source.source if isinstance(self._source, PhysicsModification) else self._object
         )
+        return export_ros2(robot, target, urdf_path.read_text(encoding="utf-8"))
 
 
 def diff(original: PhysicsObject, modified: PhysicsObject | PhysicsModification) -> DiffResult:
@@ -708,4 +836,24 @@ def diff(original: PhysicsObject, modified: PhysicsObject | PhysicsModification)
         else None
     )
     weak_fixed = max(0, len(original.weak_points) - len(result.weak_points))
-    return DiffResult(changes, mass_delta, volume_delta, weak_fixed, None)
+    goal = (
+        "minimum_weight"
+        if isinstance(modified, PhysicsModification)
+        and any("minimum_weight" in entry for entry in modified.optimization_log)
+        else None
+    )
+    reduction = (
+        -mass_delta / original.estimated_mass * 100
+        if goal == "minimum_weight" and mass_delta is not None and original.estimated_mass
+        else None
+    )
+    return DiffResult(
+        changes,
+        mass_delta,
+        volume_delta,
+        weak_fixed,
+        None,
+        weak_points_original=len(original.weak_points) if original.weak_points else None,
+        goal=goal,
+        mass_reduction_pct=reduction,
+    )

@@ -29,23 +29,24 @@ def test_repair_log_reports_observed_changes(tmp_path: Path) -> None:
     assert draft.repair_log
 
 
-def test_box_hollow_is_measured_and_other_semantic_exports_are_rejected(tmp_path: Path) -> None:
+def test_box_hollow_is_measured_and_robot_export_is_available(tmp_path: Path) -> None:
     source = _source(tmp_path)
     hollowed = source.modify.hollow(wall_thickness=0.02).result
     assert hollowed.volume == pytest.approx(1 - 0.96**3)
     assert hollowed.watertight is True
-    with pytest.raises(reality.PhysicsModificationError, match="robot XML"):
-        source.export(tmp_path / "out.urdf")
-    with pytest.raises(reality.PhysicsModificationError, match="Godot"):
-        source.export.to_godot(tmp_path / "out.tscn")
+    assert source.export(tmp_path / "out.urdf").is_file()
+    assert source.export.to_godot(tmp_path / "out.tscn").is_file()
 
 
-def test_hollow_rejects_unsupported_non_box_mesh(tmp_path: Path) -> None:
+def test_hollow_accepts_convex_non_box_mesh(tmp_path: Path) -> None:
     path = tmp_path / "sphere.obj"
     path.write_text(trimesh.creation.icosphere().export(file_type="obj"), encoding="utf-8")
     source = reality.perceive.from_3d(path, units="m")
-    with pytest.raises(reality.PhysicsModificationError, match="box meshes"):
-        _ = source.modify.hollow(wall_thickness=0.02).result
+    draft = source.modify.hollow(wall_thickness=0.02)
+    assert draft.result.watertight is True
+    assert draft.result.volume is not None
+    assert source.volume is not None
+    assert draft.result.volume < source.volume
 
 
 def test_material_name_survives_obj_roundtrip(tmp_path: Path) -> None:

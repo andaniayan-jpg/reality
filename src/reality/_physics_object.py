@@ -85,6 +85,7 @@ class PhysicsObject:
     fast: bool = False
     mass_source: Literal["declared", "estimated", "unknown"] = "unknown"
     analysis_sample_fraction: float | None = None
+    cycles_per_day: float | None = None
 
     @property
     def modify(self) -> PhysicsModification:
